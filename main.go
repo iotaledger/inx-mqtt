@@ -23,6 +23,9 @@ import (
 const (
 	APIRoute = "mqtt/v1"
 
+	// CfgINXAddress the INX address to which to connect to.
+	CfgINXAddress = "inx.address"
+
 	// CfgMQTTBindAddress the bind address on which the MQTT broker listens on.
 	CfgMQTTBindAddress = "mqtt.bindAddress"
 	// CfgMQTTWSPort the port of the WebSocket MQTT broker.
@@ -37,18 +40,8 @@ const (
 	CfgPrometheusBindAddress = "prometheus.bindAddress"
 )
 
-var (
-	config *configuration.Configuration
-)
-
 func main() {
-
-	port, err := loadStringFromEnvironment("INX_PORT")
-	if err != nil {
-		panic(err)
-	}
-
-	config, err = loadConfigFile("config.json")
+	config, err := loadConfigFile("config.json")
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +52,7 @@ func main() {
 		Time:                20 * time.Second,
 		PermitWithoutStream: true,
 	}))
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%s", port), opts...)
+	conn, err := grpc.Dial(config.String(CfgINXAddress), opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -74,12 +67,17 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		server.Start(ctx)
+		server.Start(ctx, config.String(CfgMQTTBindAddress), config.Int(CfgMQTTWSPort))
 	}()
+
+	bindAddressParts := strings.Split(config.String(CfgMQTTBindAddress), ":")
+	if len(bindAddressParts) != 2 {
+		panic(fmt.Sprintf("Invalid %s", CfgMQTTBindAddress))
+	}
 
 	apiReq := &inx.APIRouteRequest{
 		Route: APIRoute,
-		Host:  "localhost",
+		Host:  bindAddressParts[0],
 		Port:  uint32(config.Int(CfgMQTTWSPort)),
 	}
 
@@ -125,6 +123,7 @@ func main() {
 
 func flagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
+	fs.String(CfgINXAddress, "localhost:9029", "the INX address to which to connect to")
 	fs.String(CfgMQTTBindAddress, "localhost:1883", "bind address on which the MQTT broker listens on")
 	fs.Int(CfgMQTTWSPort, 1888, "port of the WebSocket MQTT broker")
 	fs.Int(CfgMQTTWorkerCount, 100, "number of parallel workers the MQTT broker uses to publish messages")
@@ -134,30 +133,18 @@ func flagSet() *flag.FlagSet {
 	return fs
 }
 
-func loadStringFromEnvironment(name string) (string, error) {
-
-	str, exists := os.LookupEnv(name)
-	if !exists {
-		return "", fmt.Errorf("environment variable '%s' not set", name)
-	}
-
-	if len(str) == 0 {
-		return "", fmt.Errorf("environment variable '%s' not set", name)
-	}
-
-	return str, nil
-}
-
 func loadConfigFile(filePath string) (*configuration.Configuration, error) {
 	config := configuration.New()
-
 	if err := config.LoadFile(filePath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("loading config file failed: %w", err)
 	}
 
-	if err := config.LoadFlagSet(flagSet()); err != nil {
+	fs := flagSet()
+	flag.CommandLine.AddFlagSet(fs)
+	flag.Parse()
+
+	if err := config.LoadFlagSet(fs); err != nil {
 		return nil, err
 	}
-
 	return config, nil
 }

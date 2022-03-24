@@ -58,11 +58,11 @@ func NewServer(client inx.INXClient) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
+func (s *Server) Start(ctx context.Context, bindAddress string, wsPort int) error {
 
 	broker, err := mqtt.NewBroker(
-		config.String(CfgMQTTBindAddress),
-		config.Int(CfgMQTTWSPort),
+		bindAddress,
+		wsPort,
 		"/",
 		100,
 		func(topic []byte) {
