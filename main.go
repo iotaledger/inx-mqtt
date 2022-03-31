@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pkg/errors"
 	flag "github.com/spf13/pflag"
 	"google.golang.org/grpc"
@@ -18,6 +20,11 @@ import (
 
 	"github.com/iotaledger/hive.go/configuration"
 	inx "github.com/iotaledger/inx/go"
+)
+
+var (
+	// Version of the app.
+	Version = "0.1.1"
 )
 
 const (
@@ -41,18 +48,22 @@ const (
 )
 
 func main() {
+	fmt.Printf(">>>>> Starting MQTT %s <<<<<\n", Version)
+
 	config, err := loadConfigFile("config.json")
 	if err != nil {
 		panic(err)
 	}
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	opts = append(opts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
-		Time:                20 * time.Second,
-		PermitWithoutStream: true,
-	}))
-	conn, err := grpc.Dial(config.String(CfgINXAddress), opts...)
+	conn, err := grpc.Dial(config.String(CfgINXAddress),
+		grpc.WithChainUnaryInterceptor(grpc_retry.UnaryClientInterceptor(), grpc_prometheus.UnaryClientInterceptor),
+		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                20 * time.Second,
+			PermitWithoutStream: true,
+		}),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -67,7 +78,10 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		server.Start(ctx, config.String(CfgMQTTBindAddress), config.Int(CfgMQTTWSPort))
+		fmt.Println("Starting MQTT broker...")
+		if err := server.Start(ctx, config.String(CfgMQTTBindAddress), config.Int(CfgMQTTWSPort)); err != nil {
+			panic(err)
+		}
 	}()
 
 	bindAddressParts := strings.Split(config.String(CfgMQTTBindAddress), ":")
@@ -94,7 +108,7 @@ func main() {
 		apiReq.MetricsPort = uint32(prometheusPort)
 	}
 
-	fmt.Println("Registering API route")
+	fmt.Println("Registering API route...")
 	if _, err := client.RegisterAPIRoute(context.Background(), apiReq); err != nil {
 		fmt.Printf("Error: %s\n", err)
 		return
@@ -113,12 +127,16 @@ func main() {
 	}()
 	<-done
 	cancel()
-	fmt.Println("Removing API route")
+	fmt.Println("Removing API route...")
 	if _, err := client.UnregisterAPIRoute(context.Background(), apiReq); err != nil {
 		fmt.Printf("Error: %s\n", err)
 		return
 	}
 	fmt.Println("exiting")
+}
+
+func retryBackoff(_ uint) time.Duration {
+	return 2 * time.Second
 }
 
 func flagSet() *flag.FlagSet {
