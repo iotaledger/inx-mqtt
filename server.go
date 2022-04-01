@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -44,7 +45,8 @@ type Server struct {
 
 func NewServer(client inx.INXClient) (*Server, error) {
 
-	protocolParams, err := client.ReadProtocolParameters(context.Background(), &inx.NoParams{})
+	fmt.Println("Connecting to node and reading protocol parameters...")
+	protocolParams, err := client.ReadProtocolParameters(context.Background(), &inx.NoParams{}, grpc_retry.WithMax(10), grpc_retry.WithBackoff(retryBackoff))
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +61,6 @@ func NewServer(client inx.INXClient) (*Server, error) {
 }
 
 func (s *Server) Start(ctx context.Context, bindAddress string, wsPort int) error {
-
 	broker, err := mqtt.NewBroker(
 		bindAddress,
 		wsPort,
