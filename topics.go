@@ -18,6 +18,9 @@ const (
 	topicTransactionsIncludedMessage = "transactions/{transactionId}/included-message"
 
 	topicOutputs                                 = "outputs/{outputId}"
+	topicNFTOutputs                              = "outputs/nfts/{nftId}"
+	topicAliasOutputs                            = "outputs/aliases/{aliasId}"
+	topicFoundryOutputs                          = "outputs/foundries/{foundryId}"
 	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/{condition}/{address}"
 	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/{condition}/{address}/spent"
 

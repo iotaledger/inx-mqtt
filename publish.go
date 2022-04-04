@@ -16,6 +16,12 @@ func (s *Server) PublishRawOnTopicIfSubscribed(topic string, payload []byte) {
 	}
 }
 
+func (s *Server) PublishPayloadFuncOnTopicIfSubscribed(topic string, payloadFunc func() interface{}) {
+	if s.MQTTBroker.HasSubscribers(topic) {
+		s.PublishOnTopic(topic, payloadFunc())
+	}
+}
+
 func (s *Server) PublishOnTopicIfSubscribed(topic string, payload interface{}) {
 	if s.MQTTBroker.HasSubscribers(topic) {
 		s.PublishOnTopic(topic, payload)
@@ -212,47 +218,81 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 	address := unlockConditions.Address()
 	if address != nil {
 		addr := address.Address.Bech32(s.ProtocolParams.NetworkPrefix())
-		s.PublishOnTopicIfSubscribed(topicFunc(unlockConditionAddress, addr), payloadFunc())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionAddress, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	storageReturn := unlockConditions.StorageDepositReturn()
 	if storageReturn != nil {
 		addr := storageReturn.ReturnAddress.Bech32(s.ProtocolParams.NetworkPrefix())
-		s.PublishOnTopicIfSubscribed(topicFunc(unlockConditionStorageReturn, addr), payloadFunc())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStorageReturn, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	expiration := unlockConditions.Expiration()
 	if expiration != nil {
 		addr := expiration.ReturnAddress.Bech32(s.ProtocolParams.NetworkPrefix())
-		s.PublishOnTopicIfSubscribed(topicFunc(unlockConditionExpirationReturn, addr), payloadFunc())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionExpirationReturn, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	stateController := unlockConditions.StateControllerAddress()
 	if stateController != nil {
 		addr := stateController.Address.Bech32(s.ProtocolParams.NetworkPrefix())
-		s.PublishOnTopicIfSubscribed(topicFunc(unlockConditionStateController, addr), payloadFunc())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStateController, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	governor := unlockConditions.GovernorAddress()
 	if governor != nil {
 		addr := governor.Address.Bech32(s.ProtocolParams.NetworkPrefix())
-		s.PublishOnTopicIfSubscribed(topicFunc(unlockConditionGovernor, addr), payloadFunc())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionGovernor, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	immutableAlias := unlockConditions.ImmutableAlias()
 	if immutableAlias != nil {
 		addr := immutableAlias.Address.Bech32(s.ProtocolParams.NetworkPrefix())
-		s.PublishOnTopicIfSubscribed(topicFunc(unlockConditionImmutableAlias, addr), payloadFunc())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionImmutableAlias, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	for addr := range addressesToPublishForAny {
-		s.PublishOnTopicIfSubscribed(topicFunc(unlockConditionAny, addr), payloadFunc())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionAny, addr), payloadFunc)
+	}
+}
+
+func (s *Server) PublishOnOutputChainTopics(outputID *iotago.OutputID, output iotago.Output, payloadFunc func() interface{}) {
+
+	switch o := output.(type) {
+	case *iotago.NFTOutput:
+		nftID := o.NFTID
+		if nftID.Empty() {
+			// Use implicit NFTID
+			nftAddr := iotago.NFTAddressFromOutputID(*outputID)
+			nftID = nftAddr.NFTID()
+		}
+		topic := strings.ReplaceAll(topicNFTOutputs, "{nftId}", nftID.String())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
+
+	case *iotago.AliasOutput:
+		aliasID := o.AliasID
+		if aliasID.Empty() {
+			// Use implicit AliasID
+			aliasID = iotago.AliasIDFromOutputID(*outputID)
+		}
+		topic := strings.ReplaceAll(topicAliasOutputs, "{aliasId}", aliasID.String())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
+
+	case *iotago.FoundryOutput:
+		foundryID, err := o.ID()
+		if err != nil {
+			return
+		}
+		topic := strings.ReplaceAll(topicFoundryOutputs, "{foundryId}", foundryID.String())
+		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
+
+	default:
 	}
 }
 
@@ -273,7 +313,7 @@ func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 
 	outputID := output.GetOutputId().Unwrap()
 	outputsTopic := strings.ReplaceAll(topicOutputs, "{outputId}", outputID.ToHex())
-	s.PublishOnTopicIfSubscribed(outputsTopic, payloadFunc())
+	s.PublishPayloadFuncOnTopicIfSubscribed(outputsTopic, payloadFunc)
 
 	// If this is the first output in a transaction (index 0), then check if someone is observing the transaction that generated this output
 	if outputID.Index() == 0 {
@@ -283,6 +323,7 @@ func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 		}
 	}
 
+	s.PublishOnOutputChainTopics(outputID, iotaOutput, payloadFunc)
 	s.PublishOnUnlockConditionTopics(topicOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
 }
 
@@ -302,7 +343,7 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 	}
 
 	outputsTopic := strings.ReplaceAll(topicOutputs, "{outputId}", spent.GetOutput().GetOutputId().Unwrap().ToHex())
-	s.PublishOnTopicIfSubscribed(outputsTopic, payloadFunc())
+	s.PublishPayloadFuncOnTopicIfSubscribed(outputsTopic, payloadFunc)
 
 	s.PublishOnUnlockConditionTopics(topicSpentOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
 }
