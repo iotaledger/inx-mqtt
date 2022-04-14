@@ -17,15 +17,16 @@ const (
 	topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
 
 	topicMessages                         = "messages"                                         // iotago.Message serialized => []bytes
-	topicMessagesReferenced               = "messages/referenced"                              // messageMetadataPayload
 	topicMessagesTransaction              = "messages/transaction"                             // iotago.Message serialized => []bytes
 	topicMessagesTransactionTaggedData    = "messages/transaction/tagged-data"                 // iotago.Message serialized => []bytes
 	topicMessagesTransactionTaggedDataTag = "messages/transaction/tagged-data/" + parameterTag // iotago.Message serialized => []bytes
 	topicMessagesTaggedData               = "messages/tagged-data"                             // iotago.Message serialized => []bytes
 	topicMessagesTaggedDataTag            = "messages/tagged-data/" + parameterTag             // iotago.Message serialized => []bytes
-	topicMessagesMetadata                 = "messages/" + parameterMessageID + "/metadata"     // messageMetadataPayload
 
 	topicTransactionsIncludedMessage = "transactions/" + parameterTransactionID + "/included-message" // iotago.Message serialized => []bytes
+
+	topicMessageMetadata           = "message-metadata/" + parameterMessageID // messageMetadataPayload	// renotify if "reattach" or "promote" changes? => add new INX event?
+	topicMessageMetadataReferenced = "message-metadata/referenced"            // messageMetadataPayload
 
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
 	topicNFTOutputs                              = "outputs/nfts/" + parameterNFTID                                           // outputPayload

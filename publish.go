@@ -111,9 +111,9 @@ func hexEncodedMessageIDsFromSliceOfSlices(s [][]byte) []string {
 func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
 
 	messageID := iotago.MessageIDToHexString(metadata.UnwrapMessageID())
-	singleMessageTopic := strings.ReplaceAll(topicMessagesMetadata, parameterMessageID, messageID)
+	singleMessageTopic := strings.ReplaceAll(topicMessageMetadata, parameterMessageID, messageID)
 	hasSingleMessageTopicSubscriber := s.MQTTBroker.HasSubscribers(singleMessageTopic)
-	hasAllMessagesTopicSubscriber := s.MQTTBroker.HasSubscribers(topicMessagesReferenced)
+	hasAllMessagesTopicSubscriber := s.MQTTBroker.HasSubscribers(topicMessageMetadataReferenced)
 
 	if !hasSingleMessageTopicSubscriber && !hasAllMessagesTopicSubscriber {
 		return
@@ -166,7 +166,7 @@ func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
 		s.MQTTBroker.Send(singleMessageTopic, jsonPayload)
 	}
 	if referenced && hasAllMessagesTopicSubscriber {
-		s.MQTTBroker.Send(topicMessagesReferenced, jsonPayload)
+		s.MQTTBroker.Send(topicMessageMetadataReferenced, jsonPayload)
 	}
 }
 
