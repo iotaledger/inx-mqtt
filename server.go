@@ -333,7 +333,7 @@ func (s *Server) listenToReferencedMessages(ctx context.Context) error {
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.LedgerUpdateRequest{}
+	filter := &inx.LedgerRequest{}
 	stream, err := s.Client.ListenToLedgerUpdates(c, filter)
 	if err != nil {
 		return err
