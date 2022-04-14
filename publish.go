@@ -348,7 +348,7 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 	s.PublishOnUnlockConditionTopics(topicSpentOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
 }
 
-func messageIDFromTopic(topicName string) *iotago.MessageID {
+func messageIDFromMessagesMetadataTopic(topicName string) *iotago.MessageID {
 	if strings.HasPrefix(topicName, "messages/") && strings.HasSuffix(topicName, "/metadata") {
 		messageIDHex := strings.Replace(topicName, "messages/", "", 1)
 		messageIDHex = strings.Replace(messageIDHex, "/metadata", "", 1)
@@ -362,7 +362,7 @@ func messageIDFromTopic(topicName string) *iotago.MessageID {
 	return nil
 }
 
-func transactionIDFromTopic(topicName string) *iotago.TransactionID {
+func transactionIDFromTransactionsIncludedMessageTopic(topicName string) *iotago.TransactionID {
 	if strings.HasPrefix(topicName, "transactions/") && strings.HasSuffix(topicName, "/included-message") {
 		transactionIDHex := strings.Replace(topicName, "transactions/", "", 1)
 		transactionIDHex = strings.Replace(transactionIDHex, "/included-message", "", 1)
@@ -378,7 +378,7 @@ func transactionIDFromTopic(topicName string) *iotago.TransactionID {
 	return nil
 }
 
-func outputIDFromTopic(topicName string) *iotago.OutputID {
+func outputIDFromOutputsTopic(topicName string) *iotago.OutputID {
 	if strings.HasPrefix(topicName, "outputs/") && !strings.HasPrefix(topicName, "outputs/unlock") {
 		outputIDHex := strings.Replace(topicName, "outputs/", "", 1)
 		outputID, err := iotago.OutputIDFromHex(outputIDHex)

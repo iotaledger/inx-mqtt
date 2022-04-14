@@ -87,25 +87,35 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 	case topicMilestonesLatest:
 		go s.fetchAndPublishMilestoneTopics(ctx)
 		s.startListenIfNeeded(ctx, grpcListenToLatestMilestone, s.listenToLatestMilestone)
+
 	case topicMilestonesConfirmed:
 		go s.fetchAndPublishMilestoneTopics(ctx)
 		s.startListenIfNeeded(ctx, grpcListenToConfirmedMilestone, s.listenToConfirmedMilestone)
-	case topicMessages:
+
+	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesMilestone, topicMessagesTaggedData:
 		s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
+
 	case topicReceipts:
 		s.startListenIfNeeded(ctx, grpcListenToMigrationReceipts, s.listenToMigrationReceipts)
+
 	default:
 		if strings.HasPrefix(topic, "messages/") {
-			if messageID := messageIDFromTopic(topic); messageID != nil {
+
+			if strings.HasPrefix(topic, "messages/transaction/taggedData/") || strings.HasPrefix(topic, "messages/taggedData/") {
+				s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
+				return
+			}
+
+			if messageID := messageIDFromMessagesMetadataTopic(topic); messageID != nil {
 				go s.fetchAndPublishMessageMetadata(ctx, *messageID)
 			}
 			s.startListenIfNeeded(ctx, grpcListenToSolidMessages, s.listenToSolidMessages)
 			s.startListenIfNeeded(ctx, grpcListenToReferencedMessages, s.listenToReferencedMessages)
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
-			if transactionID := transactionIDFromTopic(topic); transactionID != nil {
+			if transactionID := transactionIDFromTransactionsIncludedMessageTopic(topic); transactionID != nil {
 				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
 			}
-			if outputID := outputIDFromTopic(topic); outputID != nil {
+			if outputID := outputIDFromOutputsTopic(topic); outputID != nil {
 				go s.fetchAndPublishOutput(ctx, outputID)
 			}
 			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
@@ -117,14 +127,23 @@ func (s *Server) onUnsubscribeTopic(topic string) {
 	switch topic {
 	case topicMilestonesLatest:
 		s.stopListenIfNeeded(grpcListenToLatestMilestone)
+
 	case topicMilestonesConfirmed:
 		s.stopListenIfNeeded(grpcListenToConfirmedMilestone)
-	case topicMessages:
+
+	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesMilestone, topicMessagesTaggedData:
 		s.stopListenIfNeeded(grpcListenToMessages)
+
 	case topicReceipts:
 		s.stopListenIfNeeded(grpcListenToMigrationReceipts)
+
 	default:
 		if strings.HasPrefix(topic, "messages/") {
+			if strings.HasPrefix(topic, "messages/transaction/taggedData/") || strings.HasPrefix(topic, "messages/taggedData/") {
+				s.stopListenIfNeeded(grpcListenToMessages)
+				return
+			}
+
 			s.stopListenIfNeeded(grpcListenToSolidMessages)
 			s.stopListenIfNeeded(grpcListenToReferencedMessages)
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
@@ -139,8 +158,12 @@ func (s *Server) stopListenIfNeeded(grpcCall string) {
 
 	sub, ok := s.grpcSubscriptions[grpcCall]
 	if ok {
+		// subscription found
+		// decrease amount of subscribers
 		sub.Count--
+
 		if sub.Count == 0 {
+			// => no more subscribers => stop listening
 			sub.CancelFunc()
 			delete(s.grpcSubscriptions, grpcCall)
 		}
@@ -153,6 +176,8 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 
 	sub, ok := s.grpcSubscriptions[grpcCall]
 	if ok {
+		// subscription already exists
+		// => increase count to track subscribers
 		sub.Count++
 		return
 	}
