@@ -2,27 +2,37 @@ package main
 
 // Topic names
 const (
+	parameterMessageID     = "{messageId}"
+	parameterTransactionID = "{transactionId}"
+	parameterOutputID      = "{outputId}"
+	parameterTag           = "{tag}"
+	parameterNFTID         = "{nftId}"
+	parameterAliasID       = "{aliasId}"
+	parameterFoundryID     = "{foundryId}"
+	parameterCondition     = "{condition}"
+	parameterAddress       = "{address}"
+
 	topicMilestoneInfoLatest    = "milestone-info/latest"    // milestoneInfoPayload
 	topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
 	topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
 
-	topicMessages                         = "messages"
-	topicMessagesReferenced               = "messages/referenced"
-	topicMessagesTransaction              = "messages/transaction"
-	topicMessagesTransactionTaggedData    = "messages/transaction/tagged-data"
-	topicMessagesTransactionTaggedDataTag = "messages/transaction/tagged-data/{tag}"
-	topicMessagesTaggedData               = "messages/tagged-data"
-	topicMessagesTaggedDataTag            = "messages/tagged-data/{tag}"
-	topicMessagesMetadata                 = "messages/{messageId}/metadata"
+	topicMessages                         = "messages"                                         // iotago.Message serialized => []bytes
+	topicMessagesReferenced               = "messages/referenced"                              // messageMetadataPayload
+	topicMessagesTransaction              = "messages/transaction"                             // iotago.Message serialized => []bytes
+	topicMessagesTransactionTaggedData    = "messages/transaction/tagged-data"                 // iotago.Message serialized => []bytes
+	topicMessagesTransactionTaggedDataTag = "messages/transaction/tagged-data/" + parameterTag // iotago.Message serialized => []bytes
+	topicMessagesTaggedData               = "messages/tagged-data"                             // iotago.Message serialized => []bytes
+	topicMessagesTaggedDataTag            = "messages/tagged-data/" + parameterTag             // iotago.Message serialized => []bytes
+	topicMessagesMetadata                 = "messages/" + parameterMessageID + "/metadata"     // messageMetadataPayload
 
-	topicTransactionsIncludedMessage = "transactions/{transactionId}/included-message"
+	topicTransactionsIncludedMessage = "transactions/" + parameterTransactionID + "/included-message" // iotago.Message serialized => []bytes
 
-	topicOutputs                                 = "outputs/{outputId}"
-	topicNFTOutputs                              = "outputs/nfts/{nftId}"
-	topicAliasOutputs                            = "outputs/aliases/{aliasId}"
-	topicFoundryOutputs                          = "outputs/foundries/{foundryId}"
-	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/{condition}/{address}"
-	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/{condition}/{address}/spent"
+	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
+	topicNFTOutputs                              = "outputs/nfts/" + parameterNFTID                                           // outputPayload
+	topicAliasOutputs                            = "outputs/aliases/" + parameterAliasID                                      // outputPayload
+	topicFoundryOutputs                          = "outputs/foundries/" + parameterFoundryID                                  // outputPayload
+	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/" + parameterCondition + "/" + parameterAddress            // outputPayload
+	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/" + parameterCondition + "/" + parameterAddress + "/spent" // outputPayload
 
 	topicReceipts = "receipts"
 )
