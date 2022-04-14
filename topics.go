@@ -4,13 +4,13 @@ package main
 const (
 	topicMilestoneInfoLatest    = "milestone-info/latest"    // milestoneInfoPayload
 	topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
+	topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
 
 	topicMessages                         = "messages"
 	topicMessagesReferenced               = "messages/referenced"
 	topicMessagesTransaction              = "messages/transaction"
 	topicMessagesTransactionTaggedData    = "messages/transaction/taggedData"
 	topicMessagesTransactionTaggedDataTag = "messages/transaction/taggedData/{tag}"
-	topicMessagesMilestone                = "messages/milestone"
 	topicMessagesTaggedData               = "messages/taggedData"
 	topicMessagesTaggedDataTag            = "messages/taggedData/{tag}"
 	topicMessagesMetadata                 = "messages/{messageId}/metadata"

@@ -82,7 +82,11 @@ func (s *Server) PublishMessage(msg *inx.RawMessage) {
 		}
 
 	case *iotago.Milestone:
-		s.PublishRawOnTopicIfSubscribed(topicMessagesMilestone, msg.GetData())
+		payloadData, err := payload.Serialize(serializer.DeSeriModeNoValidation, nil)
+		if err != nil {
+			return
+		}
+		s.PublishRawOnTopicIfSubscribed(topicMilestones, payloadData)
 	}
 }
 

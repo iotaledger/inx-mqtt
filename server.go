@@ -92,7 +92,7 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 		s.startListenIfNeeded(ctx, grpcListenToConfirmedMilestone, s.listenToConfirmedMilestone)
 		go s.fetchAndPublishMilestoneTopics(ctx)
 
-	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesMilestone, topicMessagesTaggedData:
+	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesTaggedData, topicMilestones:
 		s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
 
 	case topicReceipts:
@@ -134,7 +134,7 @@ func (s *Server) onUnsubscribeTopic(topic string) {
 	case topicMilestoneInfoConfirmed:
 		s.stopListenIfNeeded(grpcListenToConfirmedMilestone)
 
-	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesMilestone, topicMessagesTaggedData:
+	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesTaggedData, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToMessages)
 
 	case topicReceipts:
