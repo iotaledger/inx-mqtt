@@ -2,8 +2,8 @@ package main
 
 // Topic names
 const (
-	topicMilestonesLatest    = "milestones/latest"
-	topicMilestonesConfirmed = "milestones/confirmed"
+	topicMilestoneInfoLatest    = "milestone-info/latest"    // milestoneInfoPayload
+	topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
 
 	topicMessages                         = "messages"
 	topicMessagesReferenced               = "messages/referenced"

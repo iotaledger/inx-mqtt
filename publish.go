@@ -38,7 +38,7 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 }
 
 func (s *Server) PublishMilestoneOnTopic(topic string, milestone *inx.Milestone) {
-	s.PublishOnTopicIfSubscribed(topic, &milestonePayload{
+	s.PublishOnTopicIfSubscribed(topic, &milestoneInfoPayload{
 		Index: milestone.GetMilestoneIndex(),
 		Time:  milestone.GetMilestoneTimestamp(),
 	})

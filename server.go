@@ -84,11 +84,11 @@ func (s *Server) Start(ctx context.Context, bindAddress string, wsPort int) erro
 
 func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 	switch topic {
-	case topicMilestonesLatest:
+	case topicMilestoneInfoLatest:
 		go s.fetchAndPublishMilestoneTopics(ctx)
 		s.startListenIfNeeded(ctx, grpcListenToLatestMilestone, s.listenToLatestMilestone)
 
-	case topicMilestonesConfirmed:
+	case topicMilestoneInfoConfirmed:
 		go s.fetchAndPublishMilestoneTopics(ctx)
 		s.startListenIfNeeded(ctx, grpcListenToConfirmedMilestone, s.listenToConfirmedMilestone)
 
@@ -125,10 +125,10 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 
 func (s *Server) onUnsubscribeTopic(topic string) {
 	switch topic {
-	case topicMilestonesLatest:
+	case topicMilestoneInfoLatest:
 		s.stopListenIfNeeded(grpcListenToLatestMilestone)
 
-	case topicMilestonesConfirmed:
+	case topicMilestoneInfoConfirmed:
 		s.stopListenIfNeeded(grpcListenToConfirmedMilestone)
 
 	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesMilestone, topicMessagesTaggedData:
@@ -226,7 +226,7 @@ func (s *Server) listenToLatestMilestone(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMilestoneOnTopic(topicMilestonesLatest, milestone)
+		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, milestone)
 	}
 	return nil
 }
@@ -250,7 +250,7 @@ func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMilestoneOnTopic(topicMilestonesConfirmed, milestone)
+		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, milestone)
 	}
 	return nil
 }
@@ -393,8 +393,8 @@ func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	s.PublishMilestoneOnTopic(topicMilestonesLatest, resp.GetLatestMilestone())
-	s.PublishMilestoneOnTopic(topicMilestonesConfirmed, resp.GetConfirmedMilestone())
+	s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, resp.GetLatestMilestone())
+	s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, resp.GetConfirmedMilestone())
 }
 
 func (s *Server) fetchAndPublishMessageMetadata(ctx context.Context, messageID iotago.MessageID) {
