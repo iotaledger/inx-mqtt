@@ -352,11 +352,9 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 	s.PublishOnUnlockConditionTopics(topicSpentOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
 }
 
-func messageIDFromMessagesMetadataTopic(topicName string) *iotago.MessageID {
-	if strings.HasPrefix(topicName, "messages/") && strings.HasSuffix(topicName, "/metadata") {
-		messageIDHex := strings.Replace(topicName, "messages/", "", 1)
-		messageIDHex = strings.Replace(messageIDHex, "/metadata", "", 1)
-
+func messageIDFromMessageMetadataTopic(topicName string) *iotago.MessageID {
+	if strings.HasPrefix(topicName, "message-metadata/") && !strings.HasSuffix(topicName, "/referenced") {
+		messageIDHex := strings.Replace(topicName, "message-metadata/", "", 1)
 		messageID, err := iotago.MessageIDFromHexString(messageIDHex)
 		if err != nil {
 			return nil

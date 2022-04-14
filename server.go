@@ -99,19 +99,16 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 		s.startListenIfNeeded(ctx, grpcListenToMigrationReceipts, s.listenToMigrationReceipts)
 
 	default:
-		if strings.HasPrefix(topic, "messages/") {
-
-			if strings.HasPrefix(topic, "messages/transaction/taggedData/") || strings.HasPrefix(topic, "messages/taggedData/") {
-				s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
-				return
-			}
-
+		if strings.HasPrefix(topic, "message-metadata/") {
 			s.startListenIfNeeded(ctx, grpcListenToSolidMessages, s.listenToSolidMessages)
 			s.startListenIfNeeded(ctx, grpcListenToReferencedMessages, s.listenToReferencedMessages)
 
-			if messageID := messageIDFromMessagesMetadataTopic(topic); messageID != nil {
+			if messageID := messageIDFromMessageMetadataTopic(topic); messageID != nil {
 				go s.fetchAndPublishMessageMetadata(ctx, *messageID)
 			}
+
+		} else if strings.HasPrefix(topic, "messages/") && strings.Contains(topic, "tagged-data") {
+			s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
 
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
 			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
@@ -141,14 +138,13 @@ func (s *Server) onUnsubscribeTopic(topic string) {
 		s.stopListenIfNeeded(grpcListenToMigrationReceipts)
 
 	default:
-		if strings.HasPrefix(topic, "messages/") {
-			if strings.HasPrefix(topic, "messages/transaction/taggedData/") || strings.HasPrefix(topic, "messages/taggedData/") {
-				s.stopListenIfNeeded(grpcListenToMessages)
-				return
-			}
-
+		if strings.HasPrefix(topic, "message-metadata/") {
 			s.stopListenIfNeeded(grpcListenToSolidMessages)
 			s.stopListenIfNeeded(grpcListenToReferencedMessages)
+
+		} else if strings.HasPrefix(topic, "messages/") && strings.Contains(topic, "tagged-data") {
+			s.stopListenIfNeeded(grpcListenToMessages)
+
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
 			s.stopListenIfNeeded(grpcListenToLedgerUpdates)
 		}
