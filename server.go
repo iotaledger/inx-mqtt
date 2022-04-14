@@ -85,12 +85,12 @@ func (s *Server) Start(ctx context.Context, bindAddress string, wsPort int) erro
 func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 	switch topic {
 	case topicMilestoneInfoLatest:
-		go s.fetchAndPublishMilestoneTopics(ctx)
 		s.startListenIfNeeded(ctx, grpcListenToLatestMilestone, s.listenToLatestMilestone)
+		go s.fetchAndPublishMilestoneTopics(ctx)
 
 	case topicMilestoneInfoConfirmed:
-		go s.fetchAndPublishMilestoneTopics(ctx)
 		s.startListenIfNeeded(ctx, grpcListenToConfirmedMilestone, s.listenToConfirmedMilestone)
+		go s.fetchAndPublishMilestoneTopics(ctx)
 
 	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesMilestone, topicMessagesTaggedData:
 		s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
@@ -106,19 +106,22 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 				return
 			}
 
+			s.startListenIfNeeded(ctx, grpcListenToSolidMessages, s.listenToSolidMessages)
+			s.startListenIfNeeded(ctx, grpcListenToReferencedMessages, s.listenToReferencedMessages)
+
 			if messageID := messageIDFromMessagesMetadataTopic(topic); messageID != nil {
 				go s.fetchAndPublishMessageMetadata(ctx, *messageID)
 			}
-			s.startListenIfNeeded(ctx, grpcListenToSolidMessages, s.listenToSolidMessages)
-			s.startListenIfNeeded(ctx, grpcListenToReferencedMessages, s.listenToReferencedMessages)
+
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
+			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
+
 			if transactionID := transactionIDFromTransactionsIncludedMessageTopic(topic); transactionID != nil {
 				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
 			}
 			if outputID := outputIDFromOutputsTopic(topic); outputID != nil {
 				go s.fetchAndPublishOutput(ctx, outputID)
 			}
-			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 		}
 	}
 }
