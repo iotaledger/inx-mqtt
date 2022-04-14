@@ -9,10 +9,10 @@ const (
 	topicMessages                         = "messages"
 	topicMessagesReferenced               = "messages/referenced"
 	topicMessagesTransaction              = "messages/transaction"
-	topicMessagesTransactionTaggedData    = "messages/transaction/taggedData"
-	topicMessagesTransactionTaggedDataTag = "messages/transaction/taggedData/{tag}"
-	topicMessagesTaggedData               = "messages/taggedData"
-	topicMessagesTaggedDataTag            = "messages/taggedData/{tag}"
+	topicMessagesTransactionTaggedData    = "messages/transaction/tagged-data"
+	topicMessagesTransactionTaggedDataTag = "messages/transaction/tagged-data/{tag}"
+	topicMessagesTaggedData               = "messages/tagged-data"
+	topicMessagesTaggedDataTag            = "messages/tagged-data/{tag}"
 	topicMessagesMetadata                 = "messages/{messageId}/metadata"
 
 	topicTransactionsIncludedMessage = "transactions/{transactionId}/included-message"
@@ -30,11 +30,11 @@ const (
 type unlockCondition string
 
 const (
-	unlockConditionAny              unlockCondition = "+"
-	unlockConditionAddress          unlockCondition = "address"
-	unlockConditionStorageReturn    unlockCondition = "storageReturn"
-	unlockConditionExpirationReturn unlockCondition = "expirationReturn"
-	unlockConditionStateController  unlockCondition = "stateController"
-	unlockConditionGovernor         unlockCondition = "governor"
-	unlockConditionImmutableAlias   unlockCondition = "immutableAlias"
+	unlockConditionAny             unlockCondition = "+"
+	unlockConditionAddress         unlockCondition = "address"
+	unlockConditionStorageReturn   unlockCondition = "storage-return"
+	unlockConditionExpiration      unlockCondition = "expiration"
+	unlockConditionStateController unlockCondition = "state-controller"
+	unlockConditionGovernor        unlockCondition = "governor"
+	unlockConditionImmutableAlias  unlockCondition = "immutable-alias"
 )
