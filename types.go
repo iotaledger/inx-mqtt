@@ -12,6 +12,8 @@ type milestoneInfoPayload struct {
 	Index uint32 `json:"index"`
 	// The unix time of the milestone payload.
 	Time uint32 `json:"timestamp"`
+	// The ID of the milestone.
+	MilestoneID string `json:"milestoneId"`
 }
 
 // messageMetadataPayload defines the payload of the message metadata topic

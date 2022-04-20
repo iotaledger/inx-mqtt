@@ -38,9 +38,12 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 }
 
 func (s *Server) PublishMilestoneOnTopic(topic string, milestone *inx.Milestone) {
+	milestoneID := milestone.GetMilestoneId().Unwrap()
+
 	s.PublishOnTopicIfSubscribed(topic, &milestoneInfoPayload{
-		Index: milestone.GetMilestoneIndex(),
-		Time:  milestone.GetMilestoneTimestamp(),
+		Index:       milestone.GetMilestoneIndex(),
+		Time:        milestone.GetMilestoneTimestamp(),
+		MilestoneID: iotago.EncodeHex(milestoneID[:]),
 	})
 }
 
