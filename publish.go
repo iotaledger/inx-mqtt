@@ -37,10 +37,13 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 	s.MQTTBroker.Send(topic, jsonPayload)
 }
 
-func (s *Server) PublishMilestoneOnTopic(topic string, milestone *inx.Milestone) {
-	s.PublishOnTopicIfSubscribed(topic, &milestonePayload{
-		Index: milestone.GetMilestoneIndex(),
-		Time:  milestone.GetMilestoneTimestamp(),
+func (s *Server) PublishMilestoneOnTopic(topic string, milestoneInfo *inx.MilestoneInfo) {
+	milestoneID := milestoneInfo.GetMilestoneId().Unwrap()
+
+	s.PublishOnTopicIfSubscribed(topic, &milestoneInfoPayload{
+		Index:       milestoneInfo.GetMilestoneIndex(),
+		Time:        milestoneInfo.GetMilestoneTimestamp(),
+		MilestoneID: iotago.EncodeHex(milestoneID[:]),
 	})
 }
 
@@ -69,7 +72,7 @@ func (s *Server) PublishMessage(msg *inx.RawMessage) {
 		case *iotago.TaggedData:
 			s.PublishRawOnTopicIfSubscribed(topicMessagesTransactionTaggedData, msg.GetData())
 			if len(p.Tag) > 0 {
-				txTaggedDataTagTopic := strings.ReplaceAll(topicMessagesTransactionTaggedDataTag, "{tag}", iotago.EncodeHex(p.Tag))
+				txTaggedDataTagTopic := strings.ReplaceAll(topicMessagesTransactionTaggedDataTag, parameterTag, iotago.EncodeHex(p.Tag))
 				s.PublishRawOnTopicIfSubscribed(txTaggedDataTagTopic, msg.GetData())
 			}
 		}
@@ -77,29 +80,34 @@ func (s *Server) PublishMessage(msg *inx.RawMessage) {
 	case *iotago.TaggedData:
 		s.PublishRawOnTopicIfSubscribed(topicMessagesTaggedData, msg.GetData())
 		if len(payload.Tag) > 0 {
-			taggedDataTagTopic := strings.ReplaceAll(topicMessagesTaggedDataTag, "{tag}", iotago.EncodeHex(payload.Tag))
+			taggedDataTagTopic := strings.ReplaceAll(topicMessagesTaggedDataTag, parameterTag, iotago.EncodeHex(payload.Tag))
 			s.PublishRawOnTopicIfSubscribed(taggedDataTagTopic, msg.GetData())
 		}
 
 	case *iotago.Milestone:
-		s.PublishRawOnTopicIfSubscribed(topicMessagesMilestone, msg.GetData())
+		payloadData, err := payload.Serialize(serializer.DeSeriModeNoValidation, nil)
+		if err != nil {
+			return
+		}
+		s.PublishRawOnTopicIfSubscribed(topicMilestones, payloadData)
 	}
 }
 
 func (s *Server) hasSubscriberForTransactionIncludedMessage(transactionID *iotago.TransactionID) bool {
-	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedMessage, "{transactionId}", transactionID.ToHex())
+	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedMessage, parameterTransactionID, transactionID.ToHex())
 	return s.MQTTBroker.HasSubscribers(transactionTopic)
 }
 
 func (s *Server) PublishTransactionIncludedMessage(transactionID *iotago.TransactionID, message *inx.RawMessage) {
-	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedMessage, "{transactionId}", transactionID.ToHex())
+	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedMessage, parameterTransactionID, transactionID.ToHex())
 	s.PublishRawOnTopicIfSubscribed(transactionTopic, message.GetData())
 }
 
-func hexEncodedMessageIDsFromSliceOfSlices(s [][]byte) []string {
+func hexEncodedMessageIDsFromINXMessageIDs(s []*inx.MessageId) []string {
 	results := make([]string, len(s))
 	for i, msgID := range s {
-		results[i] = iotago.EncodeHex(msgID)
+		messageID := msgID.Unwrap()
+		results[i] = iotago.EncodeHex(messageID[:])
 	}
 	return results
 }
@@ -107,9 +115,9 @@ func hexEncodedMessageIDsFromSliceOfSlices(s [][]byte) []string {
 func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
 
 	messageID := iotago.MessageIDToHexString(metadata.UnwrapMessageID())
-	singleMessageTopic := strings.ReplaceAll(topicMessagesMetadata, "{messageId}", messageID)
+	singleMessageTopic := strings.ReplaceAll(topicMessageMetadata, parameterMessageID, messageID)
 	hasSingleMessageTopicSubscriber := s.MQTTBroker.HasSubscribers(singleMessageTopic)
-	hasAllMessagesTopicSubscriber := s.MQTTBroker.HasSubscribers(topicMessagesReferenced)
+	hasAllMessagesTopicSubscriber := s.MQTTBroker.HasSubscribers(topicMessageMetadataReferenced)
 
 	if !hasSingleMessageTopicSubscriber && !hasAllMessagesTopicSubscriber {
 		return
@@ -117,7 +125,7 @@ func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
 
 	response := &messageMetadataPayload{
 		MessageID: messageID,
-		Parents:   hexEncodedMessageIDsFromSliceOfSlices(metadata.GetParents()),
+		Parents:   hexEncodedMessageIDsFromINXMessageIDs(metadata.GetParents()),
 		Solid:     metadata.GetSolid(),
 	}
 
@@ -162,7 +170,7 @@ func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
 		s.MQTTBroker.Send(singleMessageTopic, jsonPayload)
 	}
 	if referenced && hasAllMessagesTopicSubscriber {
-		s.MQTTBroker.Send(topicMessagesReferenced, jsonPayload)
+		s.MQTTBroker.Send(topicMessageMetadataReferenced, jsonPayload)
 	}
 }
 
@@ -202,8 +210,8 @@ func payloadForSpent(ledgerIndex uint32, spent *inx.LedgerSpent, iotaOutput iota
 func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.Output, payloadFunc func() interface{}) {
 
 	topicFunc := func(condition unlockCondition, addressString string) string {
-		topic := strings.ReplaceAll(baseTopic, "{condition}", string(condition))
-		return strings.ReplaceAll(topic, "{address}", addressString)
+		topic := strings.ReplaceAll(baseTopic, parameterCondition, string(condition))
+		return strings.ReplaceAll(topic, parameterAddress, addressString)
 	}
 
 	unlockConditions, err := output.UnlockConditions().Set()
@@ -232,7 +240,7 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 	expiration := unlockConditions.Expiration()
 	if expiration != nil {
 		addr := expiration.ReturnAddress.Bech32(s.ProtocolParams.NetworkPrefix())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionExpirationReturn, addr), payloadFunc)
+		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionExpiration, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
@@ -272,7 +280,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID *iotago.OutputID, output io
 			nftAddr := iotago.NFTAddressFromOutputID(*outputID)
 			nftID = nftAddr.NFTID()
 		}
-		topic := strings.ReplaceAll(topicNFTOutputs, "{nftId}", nftID.String())
+		topic := strings.ReplaceAll(topicNFTOutputs, parameterNFTID, nftID.String())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
 
 	case *iotago.AliasOutput:
@@ -281,7 +289,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID *iotago.OutputID, output io
 			// Use implicit AliasID
 			aliasID = iotago.AliasIDFromOutputID(*outputID)
 		}
-		topic := strings.ReplaceAll(topicAliasOutputs, "{aliasId}", aliasID.String())
+		topic := strings.ReplaceAll(topicAliasOutputs, parameterAliasID, aliasID.String())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
 
 	case *iotago.FoundryOutput:
@@ -289,7 +297,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID *iotago.OutputID, output io
 		if err != nil {
 			return
 		}
-		topic := strings.ReplaceAll(topicFoundryOutputs, "{foundryId}", foundryID.String())
+		topic := strings.ReplaceAll(topicFoundryOutputs, parameterFoundryID, foundryID.String())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
 
 	default:
@@ -312,7 +320,7 @@ func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 	}
 
 	outputID := output.GetOutputId().Unwrap()
-	outputsTopic := strings.ReplaceAll(topicOutputs, "{outputId}", outputID.ToHex())
+	outputsTopic := strings.ReplaceAll(topicOutputs, parameterOutputID, outputID.ToHex())
 	s.PublishPayloadFuncOnTopicIfSubscribed(outputsTopic, payloadFunc)
 
 	// If this is the first output in a transaction (index 0), then check if someone is observing the transaction that generated this output
@@ -342,17 +350,15 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 		return payload
 	}
 
-	outputsTopic := strings.ReplaceAll(topicOutputs, "{outputId}", spent.GetOutput().GetOutputId().Unwrap().ToHex())
+	outputsTopic := strings.ReplaceAll(topicOutputs, parameterOutputID, spent.GetOutput().GetOutputId().Unwrap().ToHex())
 	s.PublishPayloadFuncOnTopicIfSubscribed(outputsTopic, payloadFunc)
 
 	s.PublishOnUnlockConditionTopics(topicSpentOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
 }
 
-func messageIDFromTopic(topicName string) *iotago.MessageID {
-	if strings.HasPrefix(topicName, "messages/") && strings.HasSuffix(topicName, "/metadata") {
-		messageIDHex := strings.Replace(topicName, "messages/", "", 1)
-		messageIDHex = strings.Replace(messageIDHex, "/metadata", "", 1)
-
+func messageIDFromMessageMetadataTopic(topicName string) *iotago.MessageID {
+	if strings.HasPrefix(topicName, "message-metadata/") && !strings.HasSuffix(topicName, "/referenced") {
+		messageIDHex := strings.Replace(topicName, "message-metadata/", "", 1)
 		messageID, err := iotago.MessageIDFromHexString(messageIDHex)
 		if err != nil {
 			return nil
@@ -362,7 +368,7 @@ func messageIDFromTopic(topicName string) *iotago.MessageID {
 	return nil
 }
 
-func transactionIDFromTopic(topicName string) *iotago.TransactionID {
+func transactionIDFromTransactionsIncludedMessageTopic(topicName string) *iotago.TransactionID {
 	if strings.HasPrefix(topicName, "transactions/") && strings.HasSuffix(topicName, "/included-message") {
 		transactionIDHex := strings.Replace(topicName, "transactions/", "", 1)
 		transactionIDHex = strings.Replace(transactionIDHex, "/included-message", "", 1)
@@ -378,7 +384,7 @@ func transactionIDFromTopic(topicName string) *iotago.TransactionID {
 	return nil
 }
 
-func outputIDFromTopic(topicName string) *iotago.OutputID {
+func outputIDFromOutputsTopic(topicName string) *iotago.OutputID {
 	if strings.HasPrefix(topicName, "outputs/") && !strings.HasPrefix(topicName, "outputs/unlock") {
 		outputIDHex := strings.Replace(topicName, "outputs/", "", 1)
 		outputID, err := iotago.OutputIDFromHex(outputIDHex)

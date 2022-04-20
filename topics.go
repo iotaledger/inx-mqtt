@@ -2,27 +2,38 @@ package main
 
 // Topic names
 const (
-	topicMilestonesLatest    = "milestones/latest"
-	topicMilestonesConfirmed = "milestones/confirmed"
+	parameterMessageID     = "{messageId}"
+	parameterTransactionID = "{transactionId}"
+	parameterOutputID      = "{outputId}"
+	parameterTag           = "{tag}"
+	parameterNFTID         = "{nftId}"
+	parameterAliasID       = "{aliasId}"
+	parameterFoundryID     = "{foundryId}"
+	parameterCondition     = "{condition}"
+	parameterAddress       = "{address}"
 
-	topicMessages                         = "messages"
-	topicMessagesReferenced               = "messages/referenced"
-	topicMessagesTransaction              = "messages/transaction"
-	topicMessagesTransactionTaggedData    = "messages/transaction/taggedData"
-	topicMessagesTransactionTaggedDataTag = "messages/transaction/taggedData/{tag}"
-	topicMessagesMilestone                = "messages/milestone"
-	topicMessagesTaggedData               = "messages/taggedData"
-	topicMessagesTaggedDataTag            = "messages/taggedData/{tag}"
-	topicMessagesMetadata                 = "messages/{messageId}/metadata"
+	topicMilestoneInfoLatest    = "milestone-info/latest"    // milestoneInfoPayload
+	topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
+	topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
 
-	topicTransactionsIncludedMessage = "transactions/{transactionId}/included-message"
+	topicMessages                         = "messages"                                         // iotago.Message serialized => []bytes
+	topicMessagesTransaction              = "messages/transaction"                             // iotago.Message serialized => []bytes
+	topicMessagesTransactionTaggedData    = "messages/transaction/tagged-data"                 // iotago.Message serialized => []bytes
+	topicMessagesTransactionTaggedDataTag = "messages/transaction/tagged-data/" + parameterTag // iotago.Message serialized => []bytes
+	topicMessagesTaggedData               = "messages/tagged-data"                             // iotago.Message serialized => []bytes
+	topicMessagesTaggedDataTag            = "messages/tagged-data/" + parameterTag             // iotago.Message serialized => []bytes
 
-	topicOutputs                                 = "outputs/{outputId}"
-	topicNFTOutputs                              = "outputs/nfts/{nftId}"
-	topicAliasOutputs                            = "outputs/aliases/{aliasId}"
-	topicFoundryOutputs                          = "outputs/foundries/{foundryId}"
-	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/{condition}/{address}"
-	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/{condition}/{address}/spent"
+	topicTransactionsIncludedMessage = "transactions/" + parameterTransactionID + "/included-message" // iotago.Message serialized => []bytes
+
+	topicMessageMetadata           = "message-metadata/" + parameterMessageID // messageMetadataPayload	// renotify if "reattach" or "promote" changes? => add new INX event?
+	topicMessageMetadataReferenced = "message-metadata/referenced"            // messageMetadataPayload
+
+	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
+	topicNFTOutputs                              = "outputs/nfts/" + parameterNFTID                                           // outputPayload
+	topicAliasOutputs                            = "outputs/aliases/" + parameterAliasID                                      // outputPayload
+	topicFoundryOutputs                          = "outputs/foundries/" + parameterFoundryID                                  // outputPayload
+	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/" + parameterCondition + "/" + parameterAddress            // outputPayload
+	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/" + parameterCondition + "/" + parameterAddress + "/spent" // outputPayload
 
 	topicReceipts = "receipts"
 )
@@ -30,11 +41,11 @@ const (
 type unlockCondition string
 
 const (
-	unlockConditionAny              unlockCondition = "+"
-	unlockConditionAddress          unlockCondition = "address"
-	unlockConditionStorageReturn    unlockCondition = "storageReturn"
-	unlockConditionExpirationReturn unlockCondition = "expirationReturn"
-	unlockConditionStateController  unlockCondition = "stateController"
-	unlockConditionGovernor         unlockCondition = "governor"
-	unlockConditionImmutableAlias   unlockCondition = "immutableAlias"
+	unlockConditionAny             unlockCondition = "+"
+	unlockConditionAddress         unlockCondition = "address"
+	unlockConditionStorageReturn   unlockCondition = "storage-return"
+	unlockConditionExpiration      unlockCondition = "expiration"
+	unlockConditionStateController unlockCondition = "state-controller"
+	unlockConditionGovernor        unlockCondition = "governor"
+	unlockConditionImmutableAlias  unlockCondition = "immutable-alias"
 )

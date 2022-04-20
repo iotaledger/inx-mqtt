@@ -6,12 +6,14 @@ import (
 	inx "github.com/iotaledger/inx/go"
 )
 
-// milestonePayload defines the payload of the milestone latest and confirmed topics
-type milestonePayload struct {
+// milestoneInfoPayload defines the payload of the milestone latest and confirmed topics
+type milestoneInfoPayload struct {
 	// The index of the milestone.
 	Index uint32 `json:"index"`
 	// The unix time of the milestone payload.
 	Time uint32 `json:"timestamp"`
+	// The ID of the milestone.
+	MilestoneID string `json:"milestoneId"`
 }
 
 // messageMetadataPayload defines the payload of the message metadata topic

@@ -84,49 +84,67 @@ func (s *Server) Start(ctx context.Context, bindAddress string, wsPort int) erro
 
 func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 	switch topic {
-	case topicMilestonesLatest:
-		go s.fetchAndPublishMilestoneTopics(ctx)
+	case topicMilestoneInfoLatest:
 		s.startListenIfNeeded(ctx, grpcListenToLatestMilestone, s.listenToLatestMilestone)
-	case topicMilestonesConfirmed:
 		go s.fetchAndPublishMilestoneTopics(ctx)
+
+	case topicMilestoneInfoConfirmed:
 		s.startListenIfNeeded(ctx, grpcListenToConfirmedMilestone, s.listenToConfirmedMilestone)
-	case topicMessages:
+		go s.fetchAndPublishMilestoneTopics(ctx)
+
+	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesTaggedData, topicMilestones:
 		s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
+
 	case topicReceipts:
 		s.startListenIfNeeded(ctx, grpcListenToMigrationReceipts, s.listenToMigrationReceipts)
+
 	default:
-		if strings.HasPrefix(topic, "messages/") {
-			if messageID := messageIDFromTopic(topic); messageID != nil {
-				go s.fetchAndPublishMessageMetadata(ctx, *messageID)
-			}
+		if strings.HasPrefix(topic, "message-metadata/") {
 			s.startListenIfNeeded(ctx, grpcListenToSolidMessages, s.listenToSolidMessages)
 			s.startListenIfNeeded(ctx, grpcListenToReferencedMessages, s.listenToReferencedMessages)
+
+			if messageID := messageIDFromMessageMetadataTopic(topic); messageID != nil {
+				go s.fetchAndPublishMessageMetadata(ctx, *messageID)
+			}
+
+		} else if strings.HasPrefix(topic, "messages/") && strings.Contains(topic, "tagged-data") {
+			s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
+
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
-			if transactionID := transactionIDFromTopic(topic); transactionID != nil {
+			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
+
+			if transactionID := transactionIDFromTransactionsIncludedMessageTopic(topic); transactionID != nil {
 				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
 			}
-			if outputID := outputIDFromTopic(topic); outputID != nil {
+			if outputID := outputIDFromOutputsTopic(topic); outputID != nil {
 				go s.fetchAndPublishOutput(ctx, outputID)
 			}
-			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 		}
 	}
 }
 
 func (s *Server) onUnsubscribeTopic(topic string) {
 	switch topic {
-	case topicMilestonesLatest:
+	case topicMilestoneInfoLatest:
 		s.stopListenIfNeeded(grpcListenToLatestMilestone)
-	case topicMilestonesConfirmed:
+
+	case topicMilestoneInfoConfirmed:
 		s.stopListenIfNeeded(grpcListenToConfirmedMilestone)
-	case topicMessages:
+
+	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesTaggedData, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToMessages)
+
 	case topicReceipts:
 		s.stopListenIfNeeded(grpcListenToMigrationReceipts)
+
 	default:
-		if strings.HasPrefix(topic, "messages/") {
+		if strings.HasPrefix(topic, "message-metadata/") {
 			s.stopListenIfNeeded(grpcListenToSolidMessages)
 			s.stopListenIfNeeded(grpcListenToReferencedMessages)
+
+		} else if strings.HasPrefix(topic, "messages/") && strings.Contains(topic, "tagged-data") {
+			s.stopListenIfNeeded(grpcListenToMessages)
+
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
 			s.stopListenIfNeeded(grpcListenToLedgerUpdates)
 		}
@@ -139,8 +157,12 @@ func (s *Server) stopListenIfNeeded(grpcCall string) {
 
 	sub, ok := s.grpcSubscriptions[grpcCall]
 	if ok {
+		// subscription found
+		// decrease amount of subscribers
 		sub.Count--
+
 		if sub.Count == 0 {
+			// => no more subscribers => stop listening
 			sub.CancelFunc()
 			delete(s.grpcSubscriptions, grpcCall)
 		}
@@ -153,6 +175,8 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 
 	sub, ok := s.grpcSubscriptions[grpcCall]
 	if ok {
+		// subscription already exists
+		// => increase count to track subscribers
 		sub.Count++
 		return
 	}
@@ -201,7 +225,7 @@ func (s *Server) listenToLatestMilestone(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMilestoneOnTopic(topicMilestonesLatest, milestone)
+		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, milestone.GetMilestoneInfo())
 	}
 	return nil
 }
@@ -225,7 +249,7 @@ func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMilestoneOnTopic(topicMilestonesConfirmed, milestone)
+		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, milestone.GetMilestoneInfo())
 	}
 	return nil
 }
@@ -308,7 +332,7 @@ func (s *Server) listenToReferencedMessages(ctx context.Context) error {
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.LedgerUpdateRequest{}
+	filter := &inx.LedgerRequest{}
 	stream, err := s.Client.ListenToLedgerUpdates(c, filter)
 	if err != nil {
 		return err
@@ -368,8 +392,8 @@ func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	s.PublishMilestoneOnTopic(topicMilestonesLatest, resp.GetLatestMilestone())
-	s.PublishMilestoneOnTopic(topicMilestonesConfirmed, resp.GetConfirmedMilestone())
+	s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, resp.GetLatestMilestone())
+	s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, resp.GetConfirmedMilestone())
 }
 
 func (s *Server) fetchAndPublishMessageMetadata(ctx context.Context, messageID iotago.MessageID) {
