@@ -37,12 +37,12 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 	s.MQTTBroker.Send(topic, jsonPayload)
 }
 
-func (s *Server) PublishMilestoneOnTopic(topic string, milestone *inx.Milestone) {
-	milestoneID := milestone.GetMilestoneId().Unwrap()
+func (s *Server) PublishMilestoneOnTopic(topic string, milestoneInfo *inx.MilestoneInfo) {
+	milestoneID := milestoneInfo.GetMilestoneId().Unwrap()
 
 	s.PublishOnTopicIfSubscribed(topic, &milestoneInfoPayload{
-		Index:       milestone.GetMilestoneIndex(),
-		Time:        milestone.GetMilestoneTimestamp(),
+		Index:       milestoneInfo.GetMilestoneIndex(),
+		Time:        milestoneInfo.GetMilestoneTimestamp(),
 		MilestoneID: iotago.EncodeHex(milestoneID[:]),
 	})
 }
@@ -103,10 +103,11 @@ func (s *Server) PublishTransactionIncludedMessage(transactionID *iotago.Transac
 	s.PublishRawOnTopicIfSubscribed(transactionTopic, message.GetData())
 }
 
-func hexEncodedMessageIDsFromSliceOfSlices(s [][]byte) []string {
+func hexEncodedMessageIDsFromINXMessageIDs(s []*inx.MessageId) []string {
 	results := make([]string, len(s))
 	for i, msgID := range s {
-		results[i] = iotago.EncodeHex(msgID)
+		messageID := msgID.Unwrap()
+		results[i] = iotago.EncodeHex(messageID[:])
 	}
 	return results
 }
@@ -124,7 +125,7 @@ func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
 
 	response := &messageMetadataPayload{
 		MessageID: messageID,
-		Parents:   hexEncodedMessageIDsFromSliceOfSlices(metadata.GetParents()),
+		Parents:   hexEncodedMessageIDsFromINXMessageIDs(metadata.GetParents()),
 		Solid:     metadata.GetSolid(),
 	}
 

@@ -225,7 +225,7 @@ func (s *Server) listenToLatestMilestone(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, milestone)
+		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, milestone.GetMilestoneInfo())
 	}
 	return nil
 }
@@ -249,7 +249,7 @@ func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, milestone)
+		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, milestone.GetMilestoneInfo())
 	}
 	return nil
 }
