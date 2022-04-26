@@ -35,9 +35,9 @@ type topicSubcription struct {
 }
 
 type Server struct {
-	MQTTBroker     *mqtt.Broker
-	Client         inx.INXClient
-	ProtocolParams *inx.ProtocolParameters
+	MQTTBroker         *mqtt.Broker
+	Client             inx.INXClient
+	ProtocolParameters *iotago.ProtocolParameters
 
 	grpcSubscriptionsLock sync.Mutex
 	grpcSubscriptions     map[string]*topicSubcription
@@ -45,16 +45,16 @@ type Server struct {
 
 func NewServer(client inx.INXClient) (*Server, error) {
 
-	fmt.Println("Connecting to node and reading protocol parameters...")
-	protocolParams, err := client.ReadProtocolParameters(context.Background(), &inx.NoParams{}, grpc_retry.WithMax(10), grpc_retry.WithBackoff(retryBackoff))
+	fmt.Println("Connecting to node and reading node configuration...")
+	nodeConfig, err := client.ReadNodeConfiguration(context.Background(), &inx.NoParams{}, grpc_retry.WithMax(10), grpc_retry.WithBackoff(retryBackoff))
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Server{
-		Client:            client,
-		ProtocolParams:    protocolParams,
-		grpcSubscriptions: make(map[string]*topicSubcription),
+		Client:             client,
+		ProtocolParameters: nodeConfig.UnwrapProtocolParameters(),
+		grpcSubscriptions:  make(map[string]*topicSubcription),
 	}
 
 	return s, nil

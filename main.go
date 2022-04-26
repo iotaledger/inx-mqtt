@@ -23,8 +23,10 @@ import (
 )
 
 var (
+	// AppName name of the app.
+	AppName = "inx-mqtt"
 	// Version of the app.
-	Version = "0.1.3"
+	Version = "0.2.0"
 )
 
 const (
@@ -48,7 +50,7 @@ const (
 )
 
 func main() {
-	fmt.Printf(">>>>> Starting MQTT %s <<<<<\n", Version)
+	fmt.Printf(">>>>> Starting %s v%s <<<<<\n", AppName, Version)
 
 	config, err := loadConfigFile("config.json")
 	if err != nil {
