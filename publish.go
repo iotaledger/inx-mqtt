@@ -48,7 +48,7 @@ func (s *Server) PublishMilestoneOnTopic(topic string, milestoneInfo *inx.Milest
 }
 
 func (s *Server) PublishReceipt(r *inx.RawReceipt) {
-	receipt, err := r.UnwrapReceipt(serializer.DeSeriModeNoValidation)
+	receipt, err := r.UnwrapReceipt(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
 	}
@@ -57,7 +57,7 @@ func (s *Server) PublishReceipt(r *inx.RawReceipt) {
 
 func (s *Server) PublishMessage(msg *inx.RawMessage) {
 
-	message, err := msg.UnwrapMessage(serializer.DeSeriModeNoValidation)
+	message, err := msg.UnwrapMessage(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
 	}
@@ -225,42 +225,42 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 
 	address := unlockConditions.Address()
 	if address != nil {
-		addr := address.Address.Bech32(s.ProtocolParams.NetworkPrefix())
+		addr := address.Address.Bech32(s.ProtocolParameters.Bech32HRP)
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionAddress, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	storageReturn := unlockConditions.StorageDepositReturn()
 	if storageReturn != nil {
-		addr := storageReturn.ReturnAddress.Bech32(s.ProtocolParams.NetworkPrefix())
+		addr := storageReturn.ReturnAddress.Bech32(s.ProtocolParameters.Bech32HRP)
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStorageReturn, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	expiration := unlockConditions.Expiration()
 	if expiration != nil {
-		addr := expiration.ReturnAddress.Bech32(s.ProtocolParams.NetworkPrefix())
+		addr := expiration.ReturnAddress.Bech32(s.ProtocolParameters.Bech32HRP)
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionExpiration, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	stateController := unlockConditions.StateControllerAddress()
 	if stateController != nil {
-		addr := stateController.Address.Bech32(s.ProtocolParams.NetworkPrefix())
+		addr := stateController.Address.Bech32(s.ProtocolParameters.Bech32HRP)
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStateController, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	governor := unlockConditions.GovernorAddress()
 	if governor != nil {
-		addr := governor.Address.Bech32(s.ProtocolParams.NetworkPrefix())
+		addr := governor.Address.Bech32(s.ProtocolParameters.Bech32HRP)
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionGovernor, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	immutableAlias := unlockConditions.ImmutableAlias()
 	if immutableAlias != nil {
-		addr := immutableAlias.Address.Bech32(s.ProtocolParams.NetworkPrefix())
+		addr := immutableAlias.Address.Bech32(s.ProtocolParameters.Bech32HRP)
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionImmutableAlias, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
@@ -306,7 +306,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID *iotago.OutputID, output io
 
 func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 
-	iotaOutput, err := output.UnwrapOutput(serializer.DeSeriModeNoValidation)
+	iotaOutput, err := output.UnwrapOutput(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
 	}
@@ -337,7 +337,7 @@ func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 
 func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 
-	iotaOutput, err := spent.GetOutput().UnwrapOutput(serializer.DeSeriModeNoValidation)
+	iotaOutput, err := spent.GetOutput().UnwrapOutput(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
 	}
