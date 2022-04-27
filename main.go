@@ -26,7 +26,7 @@ var (
 	// AppName name of the app.
 	AppName = "inx-mqtt"
 	// Version of the app.
-	Version = "0.2.0"
+	Version = "0.2.1"
 )
 
 const (
