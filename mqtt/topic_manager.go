@@ -2,19 +2,14 @@ package mqtt
 
 import (
 	"sync"
-
-	"github.com/eclipse/paho.mqtt.golang/packets"
-	"github.com/fhmq/hmq/broker/lib/topics"
 )
 
-type OnSubscribeHandler func(topic []byte)
-type OnUnsubscribeHandler func(topic []byte)
+type OnSubscribeHandler func(topic string)
+type OnUnsubscribeHandler func(topic string)
 
-// topicManager registers itself instead of the normal memtopic and implements the TopicsProvider interface.
+// topicManager keeps track of subscribed topics of the mqtt broker by subscribing to broker topic events.
 // This allows to get notified when a topic is subscribed or unsubscribed
 type topicManager struct {
-	mem topics.TopicsProvider
-
 	subscribedTopics        map[string]int
 	subscribedTopicsLock    sync.RWMutex
 	subscribedTopicsDeleted int
@@ -25,36 +20,26 @@ type topicManager struct {
 	onUnsubscribe OnUnsubscribeHandler
 }
 
-func (t *topicManager) Subscribe(topic []byte, qos byte, subscriber interface{}) (byte, error) {
+func (t *topicManager) Subscribe(topicName string) {
 	t.subscribedTopicsLock.Lock()
 	defer t.subscribedTopicsLock.Unlock()
 
-	b, err := t.mem.Subscribe(topic, qos, subscriber)
-
-	if err == nil {
-		topicName := string(topic)
-		count, has := t.subscribedTopics[topicName]
-		if has {
-			t.subscribedTopics[topicName] = count + 1
-		} else {
-			t.subscribedTopics[topicName] = 1
-		}
-
-		t.onSubscribe(topic)
+	count, has := t.subscribedTopics[topicName]
+	if has {
+		t.subscribedTopics[topicName] = count + 1
+	} else {
+		t.subscribedTopics[topicName] = 1
 	}
 
-	return b, err
+	if t.onSubscribe != nil {
+		t.onSubscribe(topicName)
+	}
 }
 
-func (t *topicManager) Unsubscribe(topic []byte, subscriber interface{}) error {
+func (t *topicManager) Unsubscribe(topicName string) {
 	t.subscribedTopicsLock.Lock()
 	defer t.subscribedTopicsLock.Unlock()
 
-	err := t.mem.Unsubscribe(topic, subscriber)
-
-	// ignore error here, always unsubscribe to be safe
-
-	topicName := string(topic)
 	count, has := t.subscribedTopics[topicName]
 	if has {
 		if count <= 1 {
@@ -64,25 +49,9 @@ func (t *topicManager) Unsubscribe(topic []byte, subscriber interface{}) error {
 		}
 	}
 
-	t.onUnsubscribe(topic)
-
-	return err
-}
-
-func (t *topicManager) Subscribers(topic []byte, qos byte, subs *[]interface{}, qoss *[]byte) error {
-	return t.mem.Subscribers(topic, qos, subs, qoss)
-}
-
-func (t *topicManager) Retain(msg *packets.PublishPacket) error {
-	return t.mem.Retain(msg)
-}
-
-func (t *topicManager) Retained(topic []byte, msgs *[]*packets.PublishPacket) error {
-	return t.mem.Retained(topic, msgs)
-}
-
-func (t *topicManager) Close() error {
-	return t.mem.Close()
+	if t.onUnsubscribe != nil {
+		t.onUnsubscribe(topicName)
+	}
 }
 
 // Size returns the size of the underlying map of the topics manager.
@@ -123,18 +92,10 @@ func (t *topicManager) deleteTopic(topicName string) {
 }
 
 func newTopicManager(onSubscribe OnSubscribeHandler, onUnsubscribe OnUnsubscribeHandler, cleanupThreshold int) *topicManager {
-
-	mgr := &topicManager{
-		mem:              topics.NewMemProvider(),
+	return &topicManager{
 		subscribedTopics: make(map[string]int),
 		onSubscribe:      onSubscribe,
 		onUnsubscribe:    onUnsubscribe,
 		cleanupThreshold: cleanupThreshold,
 	}
-
-	// The normal MQTT broker uses the `mem` topic manager internally, so first unregister the default one.
-	topics.Unregister("mem")
-	// Then register our custom topic manager as the new `mem` topic manager, so that is gets used automatically.
-	topics.Register("mem", mgr)
-	return mgr
 }

@@ -18,6 +18,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 
+	"github.com/gohornet/inx-mqtt/mqtt"
+
 	"github.com/iotaledger/hive.go/configuration"
 	inx "github.com/iotaledger/inx/go"
 )
@@ -26,27 +28,11 @@ var (
 	// AppName name of the app.
 	AppName = "inx-mqtt"
 	// Version of the app.
-	Version = "0.2.1"
+	Version = "0.3.0"
 )
 
 const (
 	APIRoute = "mqtt/v1"
-
-	// CfgINXAddress the INX address to which to connect to.
-	CfgINXAddress = "inx.address"
-
-	// CfgMQTTBindAddress the bind address on which the MQTT broker listens on.
-	CfgMQTTBindAddress = "mqtt.bindAddress"
-	// CfgMQTTWSPort the port of the WebSocket MQTT broker.
-	CfgMQTTWSPort = "mqtt.wsPort"
-	// CfgMQTTWorkerCount the number of parallel workers the MQTT broker uses to publish messages.
-	CfgMQTTWorkerCount = "mqtt.workerCount"
-	// CfgMQTTTopicCleanupThreshold the number of deleted topics that trigger a garbage collection of the topic manager.
-	CfgMQTTTopicCleanupThreshold = "mqtt.topicCleanupThreshold"
-	// CfgPrometheusEnabled enable prometheus metrics.
-	CfgPrometheusEnabled = "prometheus.enabled"
-	// CfgPrometheusBindAddress bind address on which the Prometheus HTTP server listens.
-	CfgPrometheusBindAddress = "prometheus.bindAddress"
 )
 
 func main() {
@@ -72,48 +58,78 @@ func main() {
 	defer conn.Close()
 
 	client := inx.NewINXClient(conn)
-	server, err := NewServer(client)
+	server, err := NewServer(client,
+		mqtt.WithBufferSize(config.Int(CfgMQTTBufferSize)),
+		mqtt.WithBufferBlockSize(config.Int(CfgMQTTBufferBlockSize)),
+		mqtt.WithTopicCleanupThreshold(config.Int(CfgMQTTTopicCleanupThreshold)),
+		mqtt.WithWebsocketEnabled(config.Bool(CfgMQTTWebsocketEnabled)),
+		mqtt.WithWebsocketBindAddress(config.String(CfgMQTTWebsocketBindAddress)),
+		mqtt.WithTCPEnabled(config.Bool(CfgMQTTTCPEnabled)),
+		mqtt.WithTCPBindAddress(config.String(CfgMQTTTCPBindAddress)),
+		mqtt.WithTCPAuthEnabled(config.Bool(CfgMQTTTCPAuthEnabled)),
+		mqtt.WithTCPAuthPasswordSalt(config.String(CfgMQTTTCPAuthPasswordSalt)),
+		mqtt.WithTCPAuthUsers(config.StringMap(CfgMQTTTCPAuthUsers)),
+		mqtt.WithTCPTLSEnabled(config.Bool(CfgMQTTTCPTLSEnabled)),
+		mqtt.WithTCPTLSCertificatePath(config.String(CfgMQTTTCPTLSCertificatePath)),
+		mqtt.WithTCPTLSPrivateKeyPath(config.String(CfgMQTTTCPTLSPrivateKeyPath)),
+	)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
-		return
+		panic(err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		fmt.Println("Starting MQTT broker...")
-		if err := server.Start(ctx, config.String(CfgMQTTBindAddress), config.Int(CfgMQTTWSPort)); err != nil {
+		if err := server.Start(ctx); err != nil {
 			panic(err)
 		}
 	}()
 
-	bindAddressParts := strings.Split(config.String(CfgMQTTBindAddress), ":")
-	if len(bindAddressParts) != 2 {
-		panic(fmt.Sprintf("Invalid %s", CfgMQTTBindAddress))
-	}
-
-	apiReq := &inx.APIRouteRequest{
-		Route: APIRoute,
-		Host:  bindAddressParts[0],
-		Port:  uint32(config.Int(CfgMQTTWSPort)),
-	}
+	var metricsPort uint32 = 0
 
 	if config.Bool(CfgPrometheusEnabled) {
 		prometheusBindAddressParts := strings.Split(config.String(CfgPrometheusBindAddress), ":")
 		if len(prometheusBindAddressParts) != 2 {
-			panic(fmt.Sprintf("Invalid %s", CfgPrometheusBindAddress))
+			panic(fmt.Sprintf("invalid %s", CfgPrometheusBindAddress))
 		}
 		prometheusPort, err := strconv.ParseInt(prometheusBindAddressParts[1], 10, 32)
 		if err != nil {
 			panic(err)
 		}
-		setupPrometheus(config.String(CfgPrometheusBindAddress), server)
-		apiReq.MetricsPort = uint32(prometheusPort)
+		setupPrometheus(
+			config.String(CfgPrometheusBindAddress),
+			server,
+			config.Bool(CfgPrometheusGoMetrics),
+			config.Bool(CfgPrometheusProcessMetrics),
+		)
+		metricsPort = uint32(prometheusPort)
 	}
 
-	fmt.Println("Registering API route...")
-	if _, err := client.RegisterAPIRoute(context.Background(), apiReq); err != nil {
-		fmt.Printf("Error: %s\n", err)
-		return
+	var apiReq *inx.APIRouteRequest
+	if config.Bool(CfgMQTTWebsocketEnabled) {
+		bindAddressParts := strings.Split(config.String(CfgMQTTWebsocketBindAddress), ":")
+		if len(bindAddressParts) != 2 {
+			panic(fmt.Sprintf("invalid %s", CfgMQTTWebsocketBindAddress))
+		}
+
+		port, err := strconv.Atoi(bindAddressParts[1])
+		if err != nil {
+			panic(fmt.Sprintf("invalid %s", CfgMQTTWebsocketBindAddress))
+		}
+
+		apiReq = &inx.APIRouteRequest{
+			Route: APIRoute,
+			Host:  bindAddressParts[0],
+			Port:  uint32(port),
+		}
+		if metricsPort != 0 {
+			apiReq.MetricsPort = metricsPort
+		}
+
+		fmt.Println("Registering API route...")
+		if _, err := client.RegisterAPIRoute(context.Background(), apiReq); err != nil {
+			panic(fmt.Errorf("failed to register API route via INX: %w", err))
+		}
 	}
 
 	signalChan := make(chan os.Signal, 1)
@@ -129,28 +145,22 @@ func main() {
 	}()
 	<-done
 	cancel()
-	fmt.Println("Removing API route...")
-	if _, err := client.UnregisterAPIRoute(context.Background(), apiReq); err != nil {
-		fmt.Printf("Error: %s\n", err)
-		return
+
+	// shutdown the broker
+	server.Close()
+
+	if apiReq != nil {
+		fmt.Println("Removing API route...")
+		if _, err := client.UnregisterAPIRoute(context.Background(), apiReq); err != nil {
+			panic(fmt.Errorf("failed to remove API route via INX: %w", err))
+		}
 	}
+
 	fmt.Println("exiting")
 }
 
 func retryBackoff(_ uint) time.Duration {
 	return 2 * time.Second
-}
-
-func flagSet() *flag.FlagSet {
-	fs := flag.NewFlagSet("", flag.ContinueOnError)
-	fs.String(CfgINXAddress, "localhost:9029", "the INX address to which to connect to")
-	fs.String(CfgMQTTBindAddress, "localhost:1883", "bind address on which the MQTT broker listens on")
-	fs.Int(CfgMQTTWSPort, 1888, "port of the WebSocket MQTT broker")
-	fs.Int(CfgMQTTWorkerCount, 100, "number of parallel workers the MQTT broker uses to publish messages")
-	fs.Int(CfgMQTTTopicCleanupThreshold, 10000, "number of deleted topics that trigger a garbage collection of the topic manager")
-	fs.Bool(CfgPrometheusEnabled, false, "enable prometheus metrics")
-	fs.String(CfgPrometheusBindAddress, "localhost:9313", "bind address on which the Prometheus HTTP server listens.")
-	return fs
 }
 
 func loadConfigFile(filePath string) (*configuration.Configuration, error) {
