@@ -74,6 +74,6 @@ func flagSet() *flag.FlagSet {
 	fs.Bool(CfgPrometheusEnabled, false, "whether to enable the prometheus metrics")
 	fs.Bool(CfgPrometheusGoMetrics, false, "whether to include go metrics")
 	fs.Bool(CfgPrometheusProcessMetrics, false, "whether to include process metrics")
-	fs.String(CfgPrometheusBindAddress, "localhost:9313", "bind address on which the Prometheus HTTP server listens.")
+	fs.String(CfgPrometheusBindAddress, "localhost:9312", "bind address on which the Prometheus HTTP server listens.")
 	return fs
 }

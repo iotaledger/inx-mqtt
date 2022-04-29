@@ -33,7 +33,6 @@ FROM gcr.io/distroless/cc-debian11:nonroot
 
 EXPOSE 1883/tcp
 EXPOSE 1888/tcp
-EXPOSE 9313/tcp
 
 # Copy the app dir into distroless image
 COPY --chown=nonroot:nonroot --from=build /app /app

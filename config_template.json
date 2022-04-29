@@ -31,6 +31,6 @@
     "enabled": false,
     "goMetrics": false,
     "processMetrics": false,
-    "bindAddress": "localhost:9313"
+    "bindAddress": "localhost:9312"
   }
 }
