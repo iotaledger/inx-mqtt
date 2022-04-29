@@ -28,7 +28,7 @@ var (
 	// AppName name of the app.
 	AppName = "inx-mqtt"
 	// Version of the app.
-	Version = "0.3.0"
+	Version = "0.4.0"
 )
 
 const (
@@ -85,24 +85,13 @@ func main() {
 		}
 	}()
 
-	var metricsPort uint32 = 0
-
 	if config.Bool(CfgPrometheusEnabled) {
-		prometheusBindAddressParts := strings.Split(config.String(CfgPrometheusBindAddress), ":")
-		if len(prometheusBindAddressParts) != 2 {
-			panic(fmt.Sprintf("invalid %s", CfgPrometheusBindAddress))
-		}
-		prometheusPort, err := strconv.ParseInt(prometheusBindAddressParts[1], 10, 32)
-		if err != nil {
-			panic(err)
-		}
 		setupPrometheus(
 			config.String(CfgPrometheusBindAddress),
 			server,
 			config.Bool(CfgPrometheusGoMetrics),
 			config.Bool(CfgPrometheusProcessMetrics),
 		)
-		metricsPort = uint32(prometheusPort)
 	}
 
 	var apiReq *inx.APIRouteRequest
@@ -121,9 +110,6 @@ func main() {
 			Route: APIRoute,
 			Host:  bindAddressParts[0],
 			Port:  uint32(port),
-		}
-		if metricsPort != 0 {
-			apiReq.MetricsPort = metricsPort
 		}
 
 		fmt.Println("Registering API route...")
