@@ -38,12 +38,16 @@ type Server struct {
 	MQTTBroker         *mqtt.Broker
 	Client             inx.INXClient
 	ProtocolParameters *iotago.ProtocolParameters
+	brokerOptions      *mqtt.BrokerOptions
 
 	grpcSubscriptionsLock sync.Mutex
 	grpcSubscriptions     map[string]*topicSubcription
 }
 
-func NewServer(client inx.INXClient) (*Server, error) {
+func NewServer(client inx.INXClient, brokerOpts ...mqtt.BrokerOption) (*Server, error) {
+
+	opts := &mqtt.BrokerOptions{}
+	opts.ApplyOnDefault(brokerOpts...)
 
 	fmt.Println("Connecting to node and reading node configuration...")
 	nodeConfig, err := client.ReadNodeConfiguration(context.Background(), &inx.NoParams{}, grpc_retry.WithMax(10), grpc_retry.WithBackoff(retryBackoff))
@@ -54,32 +58,31 @@ func NewServer(client inx.INXClient) (*Server, error) {
 	s := &Server{
 		Client:             client,
 		ProtocolParameters: nodeConfig.UnwrapProtocolParameters(),
+		brokerOptions:      opts,
 		grpcSubscriptions:  make(map[string]*topicSubcription),
 	}
 
 	return s, nil
 }
 
-func (s *Server) Start(ctx context.Context, bindAddress string, wsPort int) error {
+func (s *Server) Start(ctx context.Context) error {
 	broker, err := mqtt.NewBroker(
-		bindAddress,
-		wsPort,
-		"/",
-		100,
-		func(topic []byte) {
-			s.onSubscribeTopic(ctx, string(topic))
-		}, func(topic []byte) {
-			s.onUnsubscribeTopic(string(topic))
+		func(topicName string) {
+			s.onSubscribeTopic(ctx, topicName)
+		}, func(topicName string) {
+			s.onUnsubscribeTopic(topicName)
 		},
-		10000)
+		s.brokerOptions)
 	if err != nil {
 		return err
 	}
 
 	s.MQTTBroker = broker
-	broker.Start()
+	return broker.Start()
+}
 
-	return nil
+func (s *Server) Close() error {
+	return s.MQTTBroker.Stop()
 }
 
 func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
