@@ -185,24 +185,26 @@ func payloadForOutput(ledgerIndex uint32, output *inx.LedgerOutput, iotaOutput i
 	transactionID := outputID.TransactionID()
 
 	return &outputPayload{
-		MessageID:                iotago.MessageIDToHexString(output.GetMessageId().Unwrap()),
-		TransactionID:            transactionID.ToHex(),
-		Spent:                    false,
-		OutputIndex:              outputID.Index(),
-		RawOutput:                &rawRawOutputJSON,
-		MilestoneIndexBooked:     output.GetMilestoneIndexBooked(),
-		MilestoneTimestampBooked: output.GetMilestoneTimestampBooked(),
-		LedgerIndex:              ledgerIndex,
+		Metadata: &outputMetadataPayload{
+			MessageID:                iotago.MessageIDToHexString(output.GetMessageId().Unwrap()),
+			TransactionID:            transactionID.ToHex(),
+			Spent:                    false,
+			OutputIndex:              outputID.Index(),
+			MilestoneIndexBooked:     output.GetMilestoneIndexBooked(),
+			MilestoneTimestampBooked: output.GetMilestoneTimestampBooked(),
+			LedgerIndex:              ledgerIndex,
+		},
+		RawOutput: &rawRawOutputJSON,
 	}
 }
 
 func payloadForSpent(ledgerIndex uint32, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
 	payload := payloadForOutput(ledgerIndex, spent.GetOutput(), iotaOutput)
 	if payload != nil {
-		payload.Spent = true
-		payload.MilestoneIndexSpent = spent.GetMilestoneIndexSpent()
-		payload.TransactionIDSpent = spent.UnwrapTransactionIDSpent().ToHex()
-		payload.MilestoneTimestampSpent = spent.GetMilestoneTimestampSpent()
+		payload.Metadata.Spent = true
+		payload.Metadata.MilestoneIndexSpent = spent.GetMilestoneIndexSpent()
+		payload.Metadata.TransactionIDSpent = spent.UnwrapTransactionIDSpent().ToHex()
+		payload.Metadata.MilestoneTimestampSpent = spent.GetMilestoneTimestampSpent()
 	}
 	return payload
 }
