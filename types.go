@@ -38,8 +38,7 @@ type messageMetadataPayload struct {
 	ShouldReattach *bool `json:"shouldReattach,omitempty"`
 }
 
-// outputPayload defines the payload of the output topics
-type outputPayload struct {
+type outputMetadata struct {
 	// The hex encoded message ID of the message.
 	MessageID string `json:"messageId"`
 	// The hex encoded transaction id from which this output originated.
@@ -60,6 +59,11 @@ type outputPayload struct {
 	MilestoneTimestampBooked uint32 `json:"milestoneTimestampBooked"`
 	// The ledger index at which this output was available at.
 	LedgerIndex uint32 `json:"ledgerIndex"`
+}
+
+// outputPayload defines the payload of the output topics
+type outputPayload struct {
+	Metadata *outputMetadata `json:"metadata"`
 	// The output in its serialized form.
 	RawOutput *json.RawMessage `json:"output"`
 }

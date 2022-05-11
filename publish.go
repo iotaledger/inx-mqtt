@@ -56,7 +56,6 @@ func (s *Server) PublishReceipt(r *inx.RawReceipt) {
 }
 
 func (s *Server) PublishMessage(msg *inx.RawMessage) {
-
 	message, err := msg.UnwrapMessage(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
@@ -113,7 +112,6 @@ func hexEncodedMessageIDsFromINXMessageIDs(s []*inx.MessageId) []string {
 }
 
 func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
-
 	messageID := iotago.MessageIDToHexString(metadata.UnwrapMessageID())
 	singleMessageTopic := strings.ReplaceAll(topicMessageMetadata, parameterMessageID, messageID)
 	hasSingleMessageTopicSubscriber := s.MQTTBroker.HasSubscribers(singleMessageTopic)
@@ -185,30 +183,34 @@ func payloadForOutput(ledgerIndex uint32, output *inx.LedgerOutput, iotaOutput i
 	transactionID := outputID.TransactionID()
 
 	return &outputPayload{
-		MessageID:                iotago.MessageIDToHexString(output.GetMessageId().Unwrap()),
-		TransactionID:            transactionID.ToHex(),
-		Spent:                    false,
-		OutputIndex:              outputID.Index(),
-		RawOutput:                &rawRawOutputJSON,
-		MilestoneIndexBooked:     output.GetMilestoneIndexBooked(),
-		MilestoneTimestampBooked: output.GetMilestoneTimestampBooked(),
-		LedgerIndex:              ledgerIndex,
+		Metadata: &outputMetadata{
+			MessageID:                iotago.MessageIDToHexString(output.GetMessageId().Unwrap()),
+			TransactionID:            transactionID.ToHex(),
+			Spent:                    false,
+			OutputIndex:              outputID.Index(),
+			MilestoneIndexBooked:     output.GetMilestoneIndexBooked(),
+			MilestoneTimestampBooked: output.GetMilestoneTimestampBooked(),
+			LedgerIndex:              ledgerIndex,
+		},
+		RawOutput: &rawRawOutputJSON,
 	}
 }
 
 func payloadForSpent(ledgerIndex uint32, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
 	payload := payloadForOutput(ledgerIndex, spent.GetOutput(), iotaOutput)
 	if payload != nil {
-		payload.Spent = true
-		payload.MilestoneIndexSpent = spent.GetMilestoneIndexSpent()
-		payload.TransactionIDSpent = spent.UnwrapTransactionIDSpent().ToHex()
-		payload.MilestoneTimestampSpent = spent.GetMilestoneTimestampSpent()
+		if payload.Metadata == nil {
+			payload.Metadata = &outputMetadata{}
+		}
+		payload.Metadata.Spent = true
+		payload.Metadata.MilestoneIndexSpent = spent.GetMilestoneIndexSpent()
+		payload.Metadata.TransactionIDSpent = spent.UnwrapTransactionIDSpent().ToHex()
+		payload.Metadata.MilestoneTimestampSpent = spent.GetMilestoneTimestampSpent()
 	}
 	return payload
 }
 
 func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.Output, payloadFunc func() interface{}) {
-
 	topicFunc := func(condition unlockCondition, addressString string) string {
 		topic := strings.ReplaceAll(baseTopic, parameterCondition, string(condition))
 		return strings.ReplaceAll(topic, parameterAddress, addressString)
@@ -271,7 +273,6 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 }
 
 func (s *Server) PublishOnOutputChainTopics(outputID *iotago.OutputID, output iotago.Output, payloadFunc func() interface{}) {
-
 	switch o := output.(type) {
 	case *iotago.NFTOutput:
 		nftID := o.NFTID
@@ -305,7 +306,6 @@ func (s *Server) PublishOnOutputChainTopics(outputID *iotago.OutputID, output io
 }
 
 func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
-
 	iotaOutput, err := output.UnwrapOutput(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
@@ -336,7 +336,6 @@ func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 }
 
 func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
-
 	iotaOutput, err := spent.GetOutput().UnwrapOutput(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
