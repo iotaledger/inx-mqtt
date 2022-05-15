@@ -6,6 +6,7 @@ import (
 	"net"
 
 	mqtt "github.com/mochi-co/mqtt/server"
+	"github.com/mochi-co/mqtt/server/events"
 	"github.com/mochi-co/mqtt/server/listeners"
 	"github.com/mochi-co/mqtt/server/listeners/auth"
 	"github.com/mochi-co/mqtt/server/system"
@@ -86,11 +87,11 @@ func NewBroker(onSubscribe OnSubscribeHandler, onUnsubscribe OnUnsubscribeHandle
 	t := newTopicManager(onSubscribe, onUnsubscribe, brokerOpts.TopicCleanupThreshold)
 
 	// bind the broker events to the topic manager to track the subscriptions
-	broker.Events.OnTopicSubscribe = func(filter string, client string, qos byte) {
+	broker.Events.OnSubscribe = func(filter string, cl events.Client, qos byte) {
 		t.Subscribe(filter)
 	}
 
-	broker.Events.OnTopicUnsubscribe = func(filter string, client string) {
+	broker.Events.OnUnsubscribe = func(filter string, cl events.Client) {
 		t.Unsubscribe(filter)
 	}
 
