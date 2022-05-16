@@ -2,8 +2,6 @@ package mqtt
 
 import (
 	"context"
-	"fmt"
-
 	"go.uber.org/dig"
 
 	"github.com/gohornet/inx-mqtt/pkg/daemon"
@@ -70,34 +68,7 @@ func provide(c *dig.Container) error {
 func run() error {
 	return CoreComponent.Daemon().BackgroundWorker("MQTT", func(ctx context.Context) {
 		CoreComponent.LogInfo("Starting MQTT Broker")
-
-		mqttCtx, cancel := context.WithCancel(ctx)
-		go func() {
-			fmt.Println("Starting MQTT broker...")
-			if err := deps.Server.Start(mqttCtx); err != nil {
-				panic(err)
-			}
-		}()
-
-		if ParamsMQTT.Websocket.Enabled {
-			CoreComponent.LogInfo("Registering API route...")
-			if err := deps.NodeBridge.RegisterAPIRoute(APIRoute, ParamsMQTT.Websocket.BindAddress); err != nil {
-				CoreComponent.LogWarnf("failed to register API route via INX: %w", err)
-			}
-		}
-
-		<-ctx.Done()
-		cancel()
-
-		// shutdown the broker
-		deps.Server.Close()
-
-		if ParamsMQTT.Websocket.Enabled {
-			CoreComponent.LogInfo("Removing API route...")
-			if err := deps.NodeBridge.UnregisterAPIRoute(APIRoute); err != nil {
-				CoreComponent.LogWarnf("failed to remove API route via INX: %w", err)
-			}
-		}
+		deps.Server.Run(ctx)
 		CoreComponent.LogInfo("Stopped MQTT Broker")
 	}, daemon.PriorityStopMQTT)
 }

@@ -60,7 +60,7 @@ func NewServer(log *logger.Logger, bridge *nodebridge.NodeBridge, brokerOpts ...
 	return s, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
+func (s *Server) Run(ctx context.Context) {
 	broker, err := mqtt.NewBroker(
 		func(topicName string) {
 			s.onSubscribeTopic(ctx, topicName)
@@ -69,15 +69,34 @@ func (s *Server) Start(ctx context.Context) error {
 		},
 		s.brokerOptions)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	s.MQTTBroker = broker
-	return broker.Start()
-}
 
-func (s *Server) Close() error {
-	return s.MQTTBroker.Stop()
+	go func() {
+		if err := broker.Start(); err != nil {
+			panic(err)
+		}
+	}()
+
+	if s.brokerOptions.WebsocketEnabled {
+		s.LogInfo("Registering API route...")
+		if err := deps.NodeBridge.RegisterAPIRoute(APIRoute, s.brokerOptions.WebsocketBindAddress); err != nil {
+			s.LogWarnf("failed to register API route via INX: %w", err)
+		}
+	}
+
+	<-ctx.Done()
+
+	if s.brokerOptions.WebsocketEnabled {
+		s.LogInfo("Removing API route...")
+		if err := deps.NodeBridge.UnregisterAPIRoute(APIRoute); err != nil {
+			s.LogWarnf("failed to remove API route via INX: %w", err)
+		}
+	}
+
+	s.MQTTBroker.Stop()
 }
 
 func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
