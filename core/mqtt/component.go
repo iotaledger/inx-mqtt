@@ -8,6 +8,7 @@ import (
 	"github.com/gohornet/inx-mqtt/pkg/mqtt"
 	"github.com/gohornet/inx-mqtt/pkg/nodebridge"
 	"github.com/iotaledger/hive.go/app"
+	"github.com/iotaledger/hive.go/app/core/shutdown"
 )
 
 const (
@@ -42,12 +43,14 @@ func provide(c *dig.Container) error {
 	type inDeps struct {
 		dig.In
 		NodeBridge *nodebridge.NodeBridge
+		*shutdown.ShutdownHandler
 	}
 
 	return c.Provide(func(deps inDeps) (*Server, error) {
 		return NewServer(
 			CoreComponent.Logger(),
 			deps.NodeBridge,
+			deps.ShutdownHandler,
 			mqtt.WithBufferSize(ParamsMQTT.BufferSize),
 			mqtt.WithBufferBlockSize(ParamsMQTT.BufferBlockSize),
 			mqtt.WithTopicCleanupThreshold(ParamsMQTT.TopicCleanupThreshold),

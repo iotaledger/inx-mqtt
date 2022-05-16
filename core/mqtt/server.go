@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"math/rand"
 	"strings"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/gohornet/inx-mqtt/pkg/mqtt"
 	"github.com/gohornet/inx-mqtt/pkg/nodebridge"
+	"github.com/iotaledger/hive.go/app/core/shutdown"
 	"github.com/iotaledger/hive.go/logger"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v3"
@@ -38,21 +38,26 @@ type topicSubcription struct {
 type Server struct {
 	*logger.WrappedLogger
 
-	MQTTBroker    *mqtt.Broker
-	NodeBridge    *nodebridge.NodeBridge
-	brokerOptions *mqtt.BrokerOptions
+	MQTTBroker      *mqtt.Broker
+	NodeBridge      *nodebridge.NodeBridge
+	shutdownHandler *shutdown.ShutdownHandler
+	brokerOptions   *mqtt.BrokerOptions
 
 	grpcSubscriptionsLock sync.Mutex
 	grpcSubscriptions     map[string]*topicSubcription
 }
 
-func NewServer(log *logger.Logger, bridge *nodebridge.NodeBridge, brokerOpts ...mqtt.BrokerOption) (*Server, error) {
+func NewServer(log *logger.Logger,
+	bridge *nodebridge.NodeBridge,
+	shutdownHandler *shutdown.ShutdownHandler,
+	brokerOpts ...mqtt.BrokerOption) (*Server, error) {
 	opts := &mqtt.BrokerOptions{}
 	opts.ApplyOnDefault(brokerOpts...)
 
 	s := &Server{
 		WrappedLogger:     logger.NewWrappedLogger(log),
 		NodeBridge:        bridge,
+		shutdownHandler:   shutdownHandler,
 		brokerOptions:     opts,
 		grpcSubscriptions: make(map[string]*topicSubcription),
 	}
@@ -83,7 +88,7 @@ func (s *Server) Run(ctx context.Context) {
 	if s.brokerOptions.WebsocketEnabled {
 		s.LogInfo("Registering API route...")
 		if err := deps.NodeBridge.RegisterAPIRoute(APIRoute, s.brokerOptions.WebsocketBindAddress); err != nil {
-			s.LogWarnf("failed to register API route via INX: %w", err)
+			s.LogErrorf("failed to register API route via INX: %s", err.Error())
 		}
 	}
 
@@ -92,7 +97,7 @@ func (s *Server) Run(ctx context.Context) {
 	if s.brokerOptions.WebsocketEnabled {
 		s.LogInfo("Removing API route...")
 		if err := deps.NodeBridge.UnregisterAPIRoute(APIRoute); err != nil {
-			s.LogWarnf("failed to remove API route via INX: %w", err)
+			s.LogErrorf("failed to remove API route via INX: %s", err.Error())
 		}
 	}
 
@@ -206,12 +211,15 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 		Identifier: subscriptionIdentifier,
 	}
 	go func() {
-		fmt.Printf("Listen to %s\n", grpcCall)
+		s.LogInfof("Listen to %s", grpcCall)
 		err := listenFunc(c)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			fmt.Printf("Finished listen to %s with error: %s\n", grpcCall, err.Error())
+			s.LogErrorf("Finished listen to %s with error: %s", grpcCall, err.Error())
+			if status.Code(err) == codes.Unavailable {
+				s.shutdownHandler.SelfShutdown("INX became unavailable", true)
+			}
 		} else {
-			fmt.Printf("Finished listen to %s\n", grpcCall)
+			s.LogInfof("Finished listen to %s", grpcCall)
 		}
 		s.grpcSubscriptionsLock.Lock()
 		sub, ok := s.grpcSubscriptions[grpcCall]
@@ -236,8 +244,7 @@ func (s *Server) listenToLatestMilestone(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
-			fmt.Printf("listenToLatestMilestone: %s\n", err.Error())
-			break
+			return err
 		}
 		if c.Err() != nil {
 			break
@@ -260,8 +267,7 @@ func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
-			fmt.Printf("listenToConfirmedMilestone: %s\n", err.Error())
-			break
+			return err
 		}
 		if c.Err() != nil {
 			break
@@ -285,8 +291,7 @@ func (s *Server) listenToMessages(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
-			fmt.Printf("listenToMessages: %s\n", err.Error())
-			break
+			return err
 		}
 		if c.Err() != nil {
 			break
@@ -310,8 +315,7 @@ func (s *Server) listenToSolidMessages(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
-			fmt.Printf("listenToSolidMessages: %s\n", err.Error())
-			break
+			return err
 		}
 		if c.Err() != nil {
 			break
@@ -335,8 +339,7 @@ func (s *Server) listenToReferencedMessages(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
-			fmt.Printf("listenToReferencedMessages: %s\n", err.Error())
-			break
+			return err
 		}
 		if c.Err() != nil {
 			break
@@ -360,8 +363,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
-			fmt.Printf("listenToLedgerUpdates: %s\n", err.Error())
-			break
+			return err
 		}
 		if c.Err() != nil {
 			break
@@ -392,8 +394,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
-			fmt.Printf("listenToMigrationReceipts: %s\n", err.Error())
-			break
+			return err
 		}
 		if c.Err() != nil {
 			break
@@ -404,7 +405,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 }
 
 func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
-	fmt.Println("fetchAndPublishMilestoneTopics")
+	s.LogDebug("fetchAndPublishMilestoneTopics")
 	resp, err := s.NodeBridge.Client().ReadNodeStatus(ctx, &inx.NoParams{})
 	if err != nil {
 		return
@@ -414,7 +415,7 @@ func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
 }
 
 func (s *Server) fetchAndPublishMessageMetadata(ctx context.Context, messageID iotago.MessageID) {
-	fmt.Printf("fetchAndPublishMessageMetadata: %s\n", iotago.MessageIDToHexString(messageID))
+	s.LogDebugf("fetchAndPublishMessageMetadata: %s", iotago.MessageIDToHexString(messageID))
 	resp, err := s.NodeBridge.Client().ReadMessageMetadata(ctx, inx.NewMessageId(messageID))
 	if err != nil {
 		return
@@ -423,7 +424,7 @@ func (s *Server) fetchAndPublishMessageMetadata(ctx context.Context, messageID i
 }
 
 func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID *iotago.OutputID) {
-	fmt.Printf("fetchAndPublishOutput: %s\n", outputID.ToHex())
+	s.LogDebugf("fetchAndPublishOutput: %s", outputID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
 		return
@@ -432,7 +433,7 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID *iotago.Out
 }
 
 func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID *iotago.TransactionID) {
-	fmt.Printf("fetchAndPublishTransactionInclusion: %s\n", transactionID.ToHex())
+	s.LogDebugf("fetchAndPublishTransactionInclusion: %s", transactionID.ToHex())
 	outputID := &iotago.OutputID{}
 	copy(outputID[:], transactionID[:])
 
