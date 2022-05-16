@@ -1,4 +1,11 @@
 {
+  "app": {
+    "checkForUpdates": true,
+    "disablePlugins": [],
+    "enablePlugins": [
+      "Prometheus"
+    ]
+  },
   "inx": {
     "address": "localhost:9029"
   },
@@ -28,7 +35,6 @@
     }
   },
   "prometheus": {
-    "enabled": false,
     "goMetrics": false,
     "processMetrics": false,
     "bindAddress": "localhost:9312"

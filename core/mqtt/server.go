@@ -8,12 +8,12 @@ import (
 	"strings"
 	"sync"
 
-	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/gohornet/inx-mqtt/pkg/mqtt"
+	"github.com/gohornet/inx-mqtt/pkg/nodebridge"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v3"
 )
@@ -44,20 +44,14 @@ type Server struct {
 	grpcSubscriptions     map[string]*topicSubcription
 }
 
-func NewServer(client inx.INXClient, brokerOpts ...mqtt.BrokerOption) (*Server, error) {
+func NewServer(bridge *nodebridge.NodeBridge, brokerOpts ...mqtt.BrokerOption) (*Server, error) {
 
 	opts := &mqtt.BrokerOptions{}
 	opts.ApplyOnDefault(brokerOpts...)
 
-	fmt.Println("Connecting to node and reading node configuration...")
-	nodeConfig, err := client.ReadNodeConfiguration(context.Background(), &inx.NoParams{}, grpc_retry.WithMax(10), grpc_retry.WithBackoff(retryBackoff))
-	if err != nil {
-		return nil, err
-	}
-
 	s := &Server{
-		Client:             client,
-		ProtocolParameters: nodeConfig.UnwrapProtocolParameters(),
+		Client:             bridge.Client(),
+		ProtocolParameters: bridge.ProtocolParameters(),
 		brokerOptions:      opts,
 		grpcSubscriptions:  make(map[string]*topicSubcription),
 	}
