@@ -1,14 +1,10 @@
-package main
+package prometheus
 
 import (
-	"net/http"
-
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/gohornet/inx-mqtt/core/mqtt"
 )
 
 var (
@@ -57,9 +53,7 @@ func registerNewMQTTBrokerGauge(registry *prometheus.Registry, name string, help
 	return gauge
 }
 
-func setupPrometheus(bindAddress string, server *Server, enableGoMetrics bool, enableProcesMetrics bool) {
-
-	registry := prometheus.NewRegistry()
+func registerMQTTMetrics(registry *prometheus.Registry) {
 	mqttBrokerAppInfo = registerNewMQTTBrokerGaugeVec(registry, "app_info", []string{"name", "version", "broker_version"}, "The current version of the server.")
 	mqttBrokerStarted = registerNewMQTTBrokerGauge(registry, "started", "The time the server started in unix seconds.")
 	mqttBrokerUptime = registerNewMQTTBrokerGauge(registry, "uptime", "The number of seconds the server has been online.")
@@ -80,62 +74,36 @@ func setupPrometheus(bindAddress string, server *Server, enableGoMetrics bool, e
 	mqttBrokerSubscriptions = registerNewMQTTBrokerGauge(registry, "subscriptions", "The total number of filter subscriptions.")
 	mqttBrokerTopicsManagerSize = registerNewMQTTBrokerGauge(registry, "topics_manager_size", "The number of active topics in the topics manager.")
 
-	if enableGoMetrics {
+	if ParamsPrometheus.GoMetrics {
 		registry.MustRegister(collectors.NewGoCollector())
 	}
-	if enableProcesMetrics {
+	if ParamsPrometheus.ProcessMetrics {
 		registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	}
-
-	e := echo.New()
-	e.HideBanner = true
-	e.Use(middleware.Recover())
-
-	e.GET("/metrics", func(c echo.Context) error {
-
-		server.collectMQTTBroker()
-
-		handler := promhttp.HandlerFor(
-			registry,
-			promhttp.HandlerOpts{
-				EnableOpenMetrics: true,
-			},
-		)
-		handler.ServeHTTP(c.Response().Writer, c.Request())
-		return nil
-	})
-
-	go func() {
-		if err := e.Start(bindAddress); err != nil {
-			if !errors.Is(err, http.ErrServerClosed) {
-				panic(err)
-			}
-		}
-	}()
 }
 
-func (s *Server) collectMQTTBroker() {
+func collectMQTTBroker(server *mqtt.Server) {
 	mqttBrokerAppInfo.With(prometheus.Labels{
-		"name":           AppName,
-		"version":        Version,
-		"broker_version": s.MQTTBroker.SystemInfo().Version,
+		"name":           Plugin.App.Info().Name,
+		"version":        Plugin.App.Info().Version,
+		"broker_version": server.MQTTBroker.SystemInfo().Version,
 	}).Set(1)
-	mqttBrokerStarted.Set(float64(s.MQTTBroker.SystemInfo().Started))
-	mqttBrokerUptime.Set(float64(s.MQTTBroker.SystemInfo().Uptime))
-	mqttBrokerBytesRecv.Set(float64(s.MQTTBroker.SystemInfo().BytesRecv))
-	mqttBrokerBytesSent.Set(float64(s.MQTTBroker.SystemInfo().BytesSent))
-	mqttBrokerClientsConnected.Set(float64(s.MQTTBroker.SystemInfo().ClientsConnected))
-	mqttBrokerClientsDisconnected.Set(float64(s.MQTTBroker.SystemInfo().ClientsDisconnected))
-	mqttBrokerClientsMax.Set(float64(s.MQTTBroker.SystemInfo().ClientsMax))
-	mqttBrokerClientsTotal.Set(float64(s.MQTTBroker.SystemInfo().ClientsTotal))
-	mqttBrokerConnectionsTotal.Set(float64(s.MQTTBroker.SystemInfo().ConnectionsTotal))
-	mqttBrokerMessagesRecv.Set(float64(s.MQTTBroker.SystemInfo().MessagesRecv))
-	mqttBrokerMessagesSent.Set(float64(s.MQTTBroker.SystemInfo().MessagesSent))
-	mqttBrokerPublishDropped.Set(float64(s.MQTTBroker.SystemInfo().PublishDropped))
-	mqttBrokerPublishRecv.Set(float64(s.MQTTBroker.SystemInfo().PublishRecv))
-	mqttBrokerPublishSent.Set(float64(s.MQTTBroker.SystemInfo().PublishSent))
-	mqttBrokerRetained.Set(float64(s.MQTTBroker.SystemInfo().Retained))
-	mqttBrokerInflight.Set(float64(s.MQTTBroker.SystemInfo().Inflight))
-	mqttBrokerSubscriptions.Set(float64(s.MQTTBroker.SystemInfo().Subscriptions))
-	mqttBrokerTopicsManagerSize.Set(float64(s.MQTTBroker.TopicsManagerSize()))
+	mqttBrokerStarted.Set(float64(server.MQTTBroker.SystemInfo().Started))
+	mqttBrokerUptime.Set(float64(server.MQTTBroker.SystemInfo().Uptime))
+	mqttBrokerBytesRecv.Set(float64(server.MQTTBroker.SystemInfo().BytesRecv))
+	mqttBrokerBytesSent.Set(float64(server.MQTTBroker.SystemInfo().BytesSent))
+	mqttBrokerClientsConnected.Set(float64(server.MQTTBroker.SystemInfo().ClientsConnected))
+	mqttBrokerClientsDisconnected.Set(float64(server.MQTTBroker.SystemInfo().ClientsDisconnected))
+	mqttBrokerClientsMax.Set(float64(server.MQTTBroker.SystemInfo().ClientsMax))
+	mqttBrokerClientsTotal.Set(float64(server.MQTTBroker.SystemInfo().ClientsTotal))
+	mqttBrokerConnectionsTotal.Set(float64(server.MQTTBroker.SystemInfo().ConnectionsTotal))
+	mqttBrokerMessagesRecv.Set(float64(server.MQTTBroker.SystemInfo().MessagesRecv))
+	mqttBrokerMessagesSent.Set(float64(server.MQTTBroker.SystemInfo().MessagesSent))
+	mqttBrokerPublishDropped.Set(float64(server.MQTTBroker.SystemInfo().PublishDropped))
+	mqttBrokerPublishRecv.Set(float64(server.MQTTBroker.SystemInfo().PublishRecv))
+	mqttBrokerPublishSent.Set(float64(server.MQTTBroker.SystemInfo().PublishSent))
+	mqttBrokerRetained.Set(float64(server.MQTTBroker.SystemInfo().Retained))
+	mqttBrokerInflight.Set(float64(server.MQTTBroker.SystemInfo().Inflight))
+	mqttBrokerSubscriptions.Set(float64(server.MQTTBroker.SystemInfo().Subscriptions))
+	mqttBrokerTopicsManagerSize.Set(float64(server.MQTTBroker.TopicsManagerSize()))
 }
