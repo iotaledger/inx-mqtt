@@ -1,4 +1,4 @@
-package main
+package mqtt
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 
-	"github.com/gohornet/inx-mqtt/mqtt"
+	"github.com/gohornet/inx-mqtt/pkg/mqtt"
 
 	"github.com/iotaledger/hive.go/configuration"
 	inx "github.com/iotaledger/inx/go"

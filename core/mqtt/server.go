@@ -1,4 +1,4 @@
-package main
+package mqtt
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/gohornet/inx-mqtt/mqtt"
+	"github.com/gohornet/inx-mqtt/pkg/mqtt"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v3"
 )

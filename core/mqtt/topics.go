@@ -1,4 +1,4 @@
-package main
+package mqtt
 
 // Topic names
 const (
