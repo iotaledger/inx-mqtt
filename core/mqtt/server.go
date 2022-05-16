@@ -92,6 +92,7 @@ func (s *Server) Run(ctx context.Context) {
 		}
 	}
 
+	s.listenKeepalive(ctx)
 	<-ctx.Done()
 
 	if s.brokerOptions.WebsocketEnabled {
@@ -102,6 +103,10 @@ func (s *Server) Run(ctx context.Context) {
 	}
 
 	s.MQTTBroker.Stop()
+}
+
+func (s *Server) listenKeepalive(ctx context.Context) {
+	s.startListenIfNeeded(ctx, grpcListenToLatestMilestone, s.listenToLatestMilestone)
 }
 
 func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
