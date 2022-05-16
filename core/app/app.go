@@ -5,6 +5,7 @@ import (
 	"github.com/gohornet/inx-mqtt/core/mqtt"
 	"github.com/gohornet/inx-mqtt/plugins/prometheus"
 	"github.com/iotaledger/hive.go/app"
+	"github.com/iotaledger/hive.go/app/core/shutdown"
 	"github.com/iotaledger/hive.go/app/plugins/profiling"
 )
 
@@ -22,6 +23,7 @@ func App() *app.App {
 		app.WithCoreComponents([]*app.CoreComponent{
 			inx.CoreComponent,
 			mqtt.CoreComponent,
+			shutdown.CoreComponent,
 		}...),
 		app.WithPlugins([]*app.Plugin{
 			profiling.Plugin,
