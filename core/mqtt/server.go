@@ -14,6 +14,7 @@ import (
 
 	"github.com/gohornet/inx-mqtt/pkg/mqtt"
 	"github.com/gohornet/inx-mqtt/pkg/nodebridge"
+	"github.com/iotaledger/hive.go/logger"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v3"
 )
@@ -35,25 +36,25 @@ type topicSubcription struct {
 }
 
 type Server struct {
-	MQTTBroker         *mqtt.Broker
-	Client             inx.INXClient
-	ProtocolParameters *iotago.ProtocolParameters
-	brokerOptions      *mqtt.BrokerOptions
+	*logger.WrappedLogger
+
+	MQTTBroker    *mqtt.Broker
+	NodeBridge    *nodebridge.NodeBridge
+	brokerOptions *mqtt.BrokerOptions
 
 	grpcSubscriptionsLock sync.Mutex
 	grpcSubscriptions     map[string]*topicSubcription
 }
 
-func NewServer(bridge *nodebridge.NodeBridge, brokerOpts ...mqtt.BrokerOption) (*Server, error) {
-
+func NewServer(log *logger.Logger, bridge *nodebridge.NodeBridge, brokerOpts ...mqtt.BrokerOption) (*Server, error) {
 	opts := &mqtt.BrokerOptions{}
 	opts.ApplyOnDefault(brokerOpts...)
 
 	s := &Server{
-		Client:             bridge.Client(),
-		ProtocolParameters: bridge.ProtocolParameters(),
-		brokerOptions:      opts,
-		grpcSubscriptions:  make(map[string]*topicSubcription),
+		WrappedLogger:     logger.NewWrappedLogger(log),
+		NodeBridge:        bridge,
+		brokerOptions:     opts,
+		grpcSubscriptions: make(map[string]*topicSubcription),
 	}
 
 	return s, nil
@@ -206,7 +207,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 func (s *Server) listenToLatestMilestone(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	stream, err := s.Client.ListenToLatestMilestone(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToLatestMilestone(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -230,7 +231,7 @@ func (s *Server) listenToLatestMilestone(ctx context.Context) error {
 func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	stream, err := s.Client.ListenToConfirmedMilestone(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToConfirmedMilestone(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -255,7 +256,7 @@ func (s *Server) listenToMessages(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
 	filter := &inx.MessageFilter{}
-	stream, err := s.Client.ListenToMessages(c, filter)
+	stream, err := s.NodeBridge.Client().ListenToMessages(c, filter)
 	if err != nil {
 		return err
 	}
@@ -280,7 +281,7 @@ func (s *Server) listenToSolidMessages(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
 	filter := &inx.MessageFilter{}
-	stream, err := s.Client.ListenToSolidMessages(c, filter)
+	stream, err := s.NodeBridge.Client().ListenToSolidMessages(c, filter)
 	if err != nil {
 		return err
 	}
@@ -305,7 +306,7 @@ func (s *Server) listenToReferencedMessages(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
 	filter := &inx.MessageFilter{}
-	stream, err := s.Client.ListenToReferencedMessages(c, filter)
+	stream, err := s.NodeBridge.Client().ListenToReferencedMessages(c, filter)
 	if err != nil {
 		return err
 	}
@@ -330,7 +331,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
 	filter := &inx.LedgerRequest{}
-	stream, err := s.Client.ListenToLedgerUpdates(c, filter)
+	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(c, filter)
 	if err != nil {
 		return err
 	}
@@ -362,7 +363,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	stream, err := s.Client.ListenToMigrationReceipts(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToMigrationReceipts(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -385,7 +386,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 
 func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
 	fmt.Println("fetchAndPublishMilestoneTopics")
-	resp, err := s.Client.ReadNodeStatus(ctx, &inx.NoParams{})
+	resp, err := s.NodeBridge.Client().ReadNodeStatus(ctx, &inx.NoParams{})
 	if err != nil {
 		return
 	}
@@ -395,7 +396,7 @@ func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
 
 func (s *Server) fetchAndPublishMessageMetadata(ctx context.Context, messageID iotago.MessageID) {
 	fmt.Printf("fetchAndPublishMessageMetadata: %s\n", iotago.MessageIDToHexString(messageID))
-	resp, err := s.Client.ReadMessageMetadata(ctx, inx.NewMessageId(messageID))
+	resp, err := s.NodeBridge.Client().ReadMessageMetadata(ctx, inx.NewMessageId(messageID))
 	if err != nil {
 		return
 	}
@@ -404,7 +405,7 @@ func (s *Server) fetchAndPublishMessageMetadata(ctx context.Context, messageID i
 
 func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID *iotago.OutputID) {
 	fmt.Printf("fetchAndPublishOutput: %s\n", outputID.ToHex())
-	resp, err := s.Client.ReadOutput(ctx, inx.NewOutputId(outputID))
+	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
 		return
 	}
@@ -416,7 +417,7 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 	outputID := &iotago.OutputID{}
 	copy(outputID[:], transactionID[:])
 
-	resp, err := s.Client.ReadOutput(ctx, inx.NewOutputId(outputID))
+	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
 		return
 	}
@@ -424,7 +425,7 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 }
 
 func (s *Server) fetchAndPublishTransactionInclusionWithMessage(ctx context.Context, transactionID *iotago.TransactionID, messageID iotago.MessageID) {
-	resp, err := s.Client.ReadMessage(ctx, inx.NewMessageId(messageID))
+	resp, err := s.NodeBridge.Client().ReadMessage(ctx, inx.NewMessageId(messageID))
 	if err != nil {
 		return
 	}

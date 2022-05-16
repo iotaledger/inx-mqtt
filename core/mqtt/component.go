@@ -47,7 +47,9 @@ func provide(c *dig.Container) error {
 	}
 
 	return c.Provide(func(deps inDeps) (*Server, error) {
-		return NewServer(deps.NodeBridge,
+		return NewServer(
+			CoreComponent.Logger(),
+			deps.NodeBridge,
 			mqtt.WithBufferSize(ParamsMQTT.BufferSize),
 			mqtt.WithBufferBlockSize(ParamsMQTT.BufferBlockSize),
 			mqtt.WithTopicCleanupThreshold(ParamsMQTT.TopicCleanupThreshold),
