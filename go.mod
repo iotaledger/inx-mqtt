@@ -6,9 +6,9 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/iotaledger/hive.go v0.0.0-20220516114042-6c0ad76bc65f
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220513191751-2a05530a929a
-	github.com/iotaledger/inx/go v0.0.0-20220506113305-665a887924b0
-	github.com/iotaledger/iota.go/v3 v3.0.0-20220506110451-defa263ae45a
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220516114042-6c0ad76bc65f
+	github.com/iotaledger/inx/go v0.0.0-20220516150515-c4dce619e926
+	github.com/iotaledger/iota.go/v3 v3.0.0-20220516085559-30a1a38f1a93
 	github.com/labstack/echo/v4 v4.7.2
 	github.com/mochi-co/mqtt v1.2.2
 	github.com/pkg/errors v0.9.1
@@ -60,9 +60,9 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/crypto v0.0.0-20220511200225-c6db032c6c88 // indirect
-	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
-	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6 // indirect
+	golang.org/x/crypto v0.0.0-20220513210258-46612604a0f9 // indirect
+	golang.org/x/net v0.0.0-20220516133312-45b265872317 // indirect
+	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect

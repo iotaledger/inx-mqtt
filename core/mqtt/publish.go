@@ -55,32 +55,32 @@ func (s *Server) PublishReceipt(r *inx.RawReceipt) {
 	s.PublishOnTopicIfSubscribed(topicReceipts, receipt)
 }
 
-func (s *Server) PublishMessage(msg *inx.RawMessage) {
+func (s *Server) PublishBlock(msg *inx.RawBlock) {
 
-	message, err := msg.UnwrapMessage(serializer.DeSeriModeNoValidation, nil)
+	block, err := msg.UnwrapBlock(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
 	}
 
-	s.PublishRawOnTopicIfSubscribed(topicMessages, msg.GetData())
+	s.PublishRawOnTopicIfSubscribed(topicBlocks, msg.GetData())
 
-	switch payload := message.Payload.(type) {
+	switch payload := block.Payload.(type) {
 	case *iotago.Transaction:
-		s.PublishRawOnTopicIfSubscribed(topicMessagesTransaction, msg.GetData())
+		s.PublishRawOnTopicIfSubscribed(topicBlocksTransaction, msg.GetData())
 
 		switch p := payload.Essence.Payload.(type) {
 		case *iotago.TaggedData:
-			s.PublishRawOnTopicIfSubscribed(topicMessagesTransactionTaggedData, msg.GetData())
+			s.PublishRawOnTopicIfSubscribed(topicBlocksTransactionTaggedData, msg.GetData())
 			if len(p.Tag) > 0 {
-				txTaggedDataTagTopic := strings.ReplaceAll(topicMessagesTransactionTaggedDataTag, parameterTag, iotago.EncodeHex(p.Tag))
+				txTaggedDataTagTopic := strings.ReplaceAll(topicBlocksTransactionTaggedDataTag, parameterTag, iotago.EncodeHex(p.Tag))
 				s.PublishRawOnTopicIfSubscribed(txTaggedDataTagTopic, msg.GetData())
 			}
 		}
 
 	case *iotago.TaggedData:
-		s.PublishRawOnTopicIfSubscribed(topicMessagesTaggedData, msg.GetData())
+		s.PublishRawOnTopicIfSubscribed(topicBlocksTaggedData, msg.GetData())
 		if len(payload.Tag) > 0 {
-			taggedDataTagTopic := strings.ReplaceAll(topicMessagesTaggedDataTag, parameterTag, iotago.EncodeHex(payload.Tag))
+			taggedDataTagTopic := strings.ReplaceAll(topicBlocksTaggedDataTag, parameterTag, iotago.EncodeHex(payload.Tag))
 			s.PublishRawOnTopicIfSubscribed(taggedDataTagTopic, msg.GetData())
 		}
 
@@ -93,40 +93,40 @@ func (s *Server) PublishMessage(msg *inx.RawMessage) {
 	}
 }
 
-func (s *Server) hasSubscriberForTransactionIncludedMessage(transactionID *iotago.TransactionID) bool {
-	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedMessage, parameterTransactionID, transactionID.ToHex())
+func (s *Server) hasSubscriberForTransactionIncludedBlock(transactionID *iotago.TransactionID) bool {
+	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedBlock, parameterTransactionID, transactionID.ToHex())
 	return s.MQTTBroker.HasSubscribers(transactionTopic)
 }
 
-func (s *Server) PublishTransactionIncludedMessage(transactionID *iotago.TransactionID, message *inx.RawMessage) {
-	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedMessage, parameterTransactionID, transactionID.ToHex())
-	s.PublishRawOnTopicIfSubscribed(transactionTopic, message.GetData())
+func (s *Server) PublishTransactionIncludedBlock(transactionID *iotago.TransactionID, block *inx.RawBlock) {
+	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedBlock, parameterTransactionID, transactionID.ToHex())
+	s.PublishRawOnTopicIfSubscribed(transactionTopic, block.GetData())
 }
 
-func hexEncodedMessageIDsFromINXMessageIDs(s []*inx.MessageId) []string {
+func hexEncodedBlockIDsFromINXBlockIDs(s []*inx.BlockId) []string {
 	results := make([]string, len(s))
-	for i, msgID := range s {
-		messageID := msgID.Unwrap()
-		results[i] = iotago.EncodeHex(messageID[:])
+	for i, blkID := range s {
+		blockID := blkID.Unwrap()
+		results[i] = iotago.EncodeHex(blockID[:])
 	}
 	return results
 }
 
-func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
+func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 
-	messageID := iotago.MessageIDToHexString(metadata.UnwrapMessageID())
-	singleMessageTopic := strings.ReplaceAll(topicMessageMetadata, parameterMessageID, messageID)
-	hasSingleMessageTopicSubscriber := s.MQTTBroker.HasSubscribers(singleMessageTopic)
-	hasAllMessagesTopicSubscriber := s.MQTTBroker.HasSubscribers(topicMessageMetadataReferenced)
+	blockID := iotago.BlockIDToHexString(metadata.UnwrapBlockID())
+	singleBlockTopic := strings.ReplaceAll(topicBlockMetadata, parameterBlockID, blockID)
+	hasSingleBlockTopicSubscriber := s.MQTTBroker.HasSubscribers(singleBlockTopic)
+	hasAllBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataReferenced)
 
-	if !hasSingleMessageTopicSubscriber && !hasAllMessagesTopicSubscriber {
+	if !hasSingleBlockTopicSubscriber && !hasAllBlocksTopicSubscriber {
 		return
 	}
 
-	response := &messageMetadataPayload{
-		MessageID: messageID,
-		Parents:   hexEncodedMessageIDsFromINXMessageIDs(metadata.GetParents()),
-		Solid:     metadata.GetSolid(),
+	response := &blockMetadataPayload{
+		BlockID: blockID,
+		Parents: hexEncodedBlockIDsFromINXBlockIDs(metadata.GetParents()),
+		Solid:   metadata.GetSolid(),
 	}
 
 	referencedByIndex := metadata.GetReferencedByMilestoneIndex()
@@ -138,13 +138,13 @@ func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
 
 		var inclusionState string
 		switch metadata.GetLedgerInclusionState() {
-		case inx.MessageMetadata_NO_TRANSACTION:
+		case inx.BlockMetadata_NO_TRANSACTION:
 			inclusionState = "noTransaction"
-		case inx.MessageMetadata_CONFLICTING:
+		case inx.BlockMetadata_CONFLICTING:
 			inclusionState = "conflicting"
 			conflict := metadata.GetConflictReason()
 			response.ConflictReason = &conflict
-		case inx.MessageMetadata_INCLUDED:
+		case inx.BlockMetadata_INCLUDED:
 			inclusionState = "included"
 		}
 		response.LedgerInclusionState = &inclusionState
@@ -166,11 +166,11 @@ func (s *Server) PublishMessageMetadata(metadata *inx.MessageMetadata) {
 		return
 	}
 
-	if hasSingleMessageTopicSubscriber {
-		s.MQTTBroker.Send(singleMessageTopic, jsonPayload)
+	if hasSingleBlockTopicSubscriber {
+		s.MQTTBroker.Send(singleBlockTopic, jsonPayload)
 	}
-	if referenced && hasAllMessagesTopicSubscriber {
-		s.MQTTBroker.Send(topicMessageMetadataReferenced, jsonPayload)
+	if referenced && hasAllBlocksTopicSubscriber {
+		s.MQTTBroker.Send(topicBlockMetadataReferenced, jsonPayload)
 	}
 }
 
@@ -186,7 +186,7 @@ func payloadForOutput(ledgerIndex uint32, output *inx.LedgerOutput, iotaOutput i
 
 	return &outputPayload{
 		Metadata: &outputMetadataPayload{
-			MessageID:                iotago.MessageIDToHexString(output.GetMessageId().Unwrap()),
+			BlockID:                  iotago.BlockIDToHexString(output.GetBlockId().Unwrap()),
 			TransactionID:            transactionID.ToHex(),
 			Spent:                    false,
 			OutputIndex:              outputID.Index(),
@@ -216,10 +216,7 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 		return strings.ReplaceAll(topic, parameterAddress, addressString)
 	}
 
-	unlockConditions, err := output.UnlockConditions().Set()
-	if err != nil {
-		return
-	}
+	unlockConditions := output.UnlockConditionsSet()
 
 	// this tracks the addresses used by any unlock condition
 	// so that after checking all conditions we can see if anyone is subscribed to the wildcard
@@ -328,8 +325,8 @@ func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 	// If this is the first output in a transaction (index 0), then check if someone is observing the transaction that generated this output
 	if outputID.Index() == 0 {
 		transactionID := outputID.TransactionID()
-		if s.hasSubscriberForTransactionIncludedMessage(&transactionID) {
-			s.fetchAndPublishTransactionInclusionWithMessage(context.Background(), &transactionID, output.GetMessageId().Unwrap())
+		if s.hasSubscriberForTransactionIncludedBlock(&transactionID) {
+			s.fetchAndPublishTransactionInclusionWithBlock(context.Background(), &transactionID, output.GetBlockId().Unwrap())
 		}
 	}
 
@@ -358,22 +355,22 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 	s.PublishOnUnlockConditionTopics(topicSpentOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
 }
 
-func messageIDFromMessageMetadataTopic(topicName string) *iotago.MessageID {
-	if strings.HasPrefix(topicName, "message-metadata/") && !strings.HasSuffix(topicName, "/referenced") {
-		messageIDHex := strings.Replace(topicName, "message-metadata/", "", 1)
-		messageID, err := iotago.MessageIDFromHexString(messageIDHex)
+func blockIDFromBlockMetadataTopic(topicName string) *iotago.BlockID {
+	if strings.HasPrefix(topicName, "block-metadata/") && !strings.HasSuffix(topicName, "/referenced") {
+		blockIDHex := strings.Replace(topicName, "block-metadata/", "", 1)
+		blockID, err := iotago.BlockIDFromHexString(blockIDHex)
 		if err != nil {
 			return nil
 		}
-		return &messageID
+		return &blockID
 	}
 	return nil
 }
 
-func transactionIDFromTransactionsIncludedMessageTopic(topicName string) *iotago.TransactionID {
-	if strings.HasPrefix(topicName, "transactions/") && strings.HasSuffix(topicName, "/included-message") {
+func transactionIDFromTransactionsIncludedBlockTopic(topicName string) *iotago.TransactionID {
+	if strings.HasPrefix(topicName, "transactions/") && strings.HasSuffix(topicName, "/included-block") {
 		transactionIDHex := strings.Replace(topicName, "transactions/", "", 1)
-		transactionIDHex = strings.Replace(transactionIDHex, "/included-message", "", 1)
+		transactionIDHex = strings.Replace(transactionIDHex, "/included-block", "", 1)
 
 		decoded, err := iotago.DecodeHex(transactionIDHex)
 		if err != nil || len(decoded) != iotago.TransactionIDLength {
