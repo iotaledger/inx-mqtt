@@ -29,6 +29,11 @@ const (
 	grpcListenToMigrationReceipts  = "INX.ListenToMigrationReceipts"
 )
 
+var (
+	emptyOutputID      = iotago.OutputID{}
+	emptyTransactionID = iotago.TransactionID{}
+)
+
 type topicSubcription struct {
 	Count      int
 	CancelFunc func()
@@ -130,8 +135,8 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 			s.startListenIfNeeded(ctx, grpcListenToSolidBlocks, s.listenToSolidBlocks)
 			s.startListenIfNeeded(ctx, grpcListenToReferencedBlocks, s.listenToReferencedBlocks)
 
-			if blockID := blockIDFromBlockMetadataTopic(topic); blockID != nil {
-				go s.fetchAndPublishBlockMetadata(ctx, *blockID)
+			if blockID := blockIDFromBlockMetadataTopic(topic); !blockID.Empty() {
+				go s.fetchAndPublishBlockMetadata(ctx, blockID)
 			}
 
 		} else if strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data") {
@@ -140,10 +145,10 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
 			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
-			if transactionID := transactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != nil {
+			if transactionID := transactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != emptyTransactionID {
 				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
 			}
-			if outputID := outputIDFromOutputsTopic(topic); outputID != nil {
+			if outputID := outputIDFromOutputsTopic(topic); outputID != emptyOutputID {
 				go s.fetchAndPublishOutput(ctx, outputID)
 			}
 		}
@@ -420,7 +425,7 @@ func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
 }
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
-	s.LogDebugf("fetchAndPublishBlockMetadata: %s", iotago.BlockIDToHexString(blockID))
+	s.LogDebugf("fetchAndPublishBlockMetadata: %s", blockID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadBlockMetadata(ctx, inx.NewBlockId(blockID))
 	if err != nil {
 		return
@@ -428,7 +433,7 @@ func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotag
 	s.PublishBlockMetadata(resp)
 }
 
-func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID *iotago.OutputID) {
+func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.OutputID) {
 	s.LogDebugf("fetchAndPublishOutput: %s", outputID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
@@ -437,9 +442,9 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID *iotago.Out
 	s.PublishOutput(resp.GetLedgerIndex(), resp.GetOutput())
 }
 
-func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID *iotago.TransactionID) {
+func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID iotago.TransactionID) {
 	s.LogDebugf("fetchAndPublishTransactionInclusion: %s", transactionID.ToHex())
-	outputID := &iotago.OutputID{}
+	outputID := iotago.OutputID{}
 	copy(outputID[:], transactionID[:])
 
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
@@ -449,7 +454,7 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 	s.fetchAndPublishTransactionInclusionWithBlock(ctx, transactionID, resp.GetOutput().UnwrapBlockID())
 }
 
-func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Context, transactionID *iotago.TransactionID, blockID iotago.BlockID) {
+func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Context, transactionID iotago.TransactionID, blockID iotago.BlockID) {
 	resp, err := s.NodeBridge.Client().ReadBlock(ctx, inx.NewBlockId(blockID))
 	if err != nil {
 		return
