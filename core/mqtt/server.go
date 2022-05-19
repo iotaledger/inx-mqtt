@@ -22,11 +22,16 @@ import (
 const (
 	grpcListenToLatestMilestone    = "INX.ListenToLatestMilestone"
 	grpcListenToConfirmedMilestone = "INX.ListenToConfirmedMilestone"
-	grpcListenToMessages           = "INX.ListenToMessages"
-	grpcListenToSolidMessages      = "INX.ListenToSolidMessages"
-	grpcListenToReferencedMessages = "INX.ListenToReferencedMessages"
+	grpcListenToBlocks             = "INX.ListenToBlocks"
+	grpcListenToSolidBlocks        = "INX.ListenToSolidBlocks"
+	grpcListenToReferencedBlocks   = "INX.ListenToReferencedBlocks"
 	grpcListenToLedgerUpdates      = "INX.ListenToLedgerUpdates"
 	grpcListenToMigrationReceipts  = "INX.ListenToMigrationReceipts"
+)
+
+var (
+	emptyOutputID      = iotago.OutputID{}
+	emptyTransactionID = iotago.TransactionID{}
 )
 
 type topicSubcription struct {
@@ -119,31 +124,31 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 		s.startListenIfNeeded(ctx, grpcListenToConfirmedMilestone, s.listenToConfirmedMilestone)
 		go s.fetchAndPublishMilestoneTopics(ctx)
 
-	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesTaggedData, topicMilestones:
-		s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
+	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
+		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
 	case topicReceipts:
 		s.startListenIfNeeded(ctx, grpcListenToMigrationReceipts, s.listenToMigrationReceipts)
 
 	default:
-		if strings.HasPrefix(topic, "message-metadata/") {
-			s.startListenIfNeeded(ctx, grpcListenToSolidMessages, s.listenToSolidMessages)
-			s.startListenIfNeeded(ctx, grpcListenToReferencedMessages, s.listenToReferencedMessages)
+		if strings.HasPrefix(topic, "block-metadata/") {
+			s.startListenIfNeeded(ctx, grpcListenToSolidBlocks, s.listenToSolidBlocks)
+			s.startListenIfNeeded(ctx, grpcListenToReferencedBlocks, s.listenToReferencedBlocks)
 
-			if messageID := messageIDFromMessageMetadataTopic(topic); messageID != nil {
-				go s.fetchAndPublishMessageMetadata(ctx, *messageID)
+			if blockID := blockIDFromBlockMetadataTopic(topic); !blockID.Empty() {
+				go s.fetchAndPublishBlockMetadata(ctx, blockID)
 			}
 
-		} else if strings.HasPrefix(topic, "messages/") && strings.Contains(topic, "tagged-data") {
-			s.startListenIfNeeded(ctx, grpcListenToMessages, s.listenToMessages)
+		} else if strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data") {
+			s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
 			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
-			if transactionID := transactionIDFromTransactionsIncludedMessageTopic(topic); transactionID != nil {
+			if transactionID := transactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != emptyTransactionID {
 				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
 			}
-			if outputID := outputIDFromOutputsTopic(topic); outputID != nil {
+			if outputID := outputIDFromOutputsTopic(topic); outputID != emptyOutputID {
 				go s.fetchAndPublishOutput(ctx, outputID)
 			}
 		}
@@ -158,19 +163,19 @@ func (s *Server) onUnsubscribeTopic(topic string) {
 	case topicMilestoneInfoConfirmed:
 		s.stopListenIfNeeded(grpcListenToConfirmedMilestone)
 
-	case topicMessages, topicMessagesTransaction, topicMessagesTransactionTaggedData, topicMessagesTaggedData, topicMilestones:
-		s.stopListenIfNeeded(grpcListenToMessages)
+	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
+		s.stopListenIfNeeded(grpcListenToBlocks)
 
 	case topicReceipts:
 		s.stopListenIfNeeded(grpcListenToMigrationReceipts)
 
 	default:
-		if strings.HasPrefix(topic, "message-metadata/") {
-			s.stopListenIfNeeded(grpcListenToSolidMessages)
-			s.stopListenIfNeeded(grpcListenToReferencedMessages)
+		if strings.HasPrefix(topic, "block-metadata/") {
+			s.stopListenIfNeeded(grpcListenToSolidBlocks)
+			s.stopListenIfNeeded(grpcListenToReferencedBlocks)
 
-		} else if strings.HasPrefix(topic, "messages/") && strings.Contains(topic, "tagged-data") {
-			s.stopListenIfNeeded(grpcListenToMessages)
+		} else if strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data") {
+			s.stopListenIfNeeded(grpcListenToBlocks)
 
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
 			s.stopListenIfNeeded(grpcListenToLedgerUpdates)
@@ -282,16 +287,16 @@ func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) listenToMessages(ctx context.Context) error {
+func (s *Server) listenToBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.MessageFilter{}
-	stream, err := s.NodeBridge.Client().ListenToMessages(c, filter)
+	filter := &inx.BlockFilter{}
+	stream, err := s.NodeBridge.Client().ListenToBlocks(c, filter)
 	if err != nil {
 		return err
 	}
 	for {
-		message, err := stream.Recv()
+		block, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
@@ -301,21 +306,21 @@ func (s *Server) listenToMessages(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMessage(message.GetMessage())
+		s.PublishBlock(block.GetBlock())
 	}
 	return nil
 }
 
-func (s *Server) listenToSolidMessages(ctx context.Context) error {
+func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.MessageFilter{}
-	stream, err := s.NodeBridge.Client().ListenToSolidMessages(c, filter)
+	filter := &inx.BlockFilter{}
+	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(c, filter)
 	if err != nil {
 		return err
 	}
 	for {
-		messageMetadata, err := stream.Recv()
+		blockMetadata, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
@@ -325,21 +330,21 @@ func (s *Server) listenToSolidMessages(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMessageMetadata(messageMetadata)
+		s.PublishBlockMetadata(blockMetadata)
 	}
 	return nil
 }
 
-func (s *Server) listenToReferencedMessages(ctx context.Context) error {
+func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.MessageFilter{}
-	stream, err := s.NodeBridge.Client().ListenToReferencedMessages(c, filter)
+	filter := &inx.BlockFilter{}
+	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(c, filter)
 	if err != nil {
 		return err
 	}
 	for {
-		messageMetadata, err := stream.Recv()
+		blockMetadata, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
@@ -349,7 +354,7 @@ func (s *Server) listenToReferencedMessages(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		s.PublishMessageMetadata(messageMetadata)
+		s.PublishBlockMetadata(blockMetadata)
 	}
 	return nil
 }
@@ -419,16 +424,16 @@ func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
 	s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, resp.GetConfirmedMilestone())
 }
 
-func (s *Server) fetchAndPublishMessageMetadata(ctx context.Context, messageID iotago.MessageID) {
-	s.LogDebugf("fetchAndPublishMessageMetadata: %s", iotago.MessageIDToHexString(messageID))
-	resp, err := s.NodeBridge.Client().ReadMessageMetadata(ctx, inx.NewMessageId(messageID))
+func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
+	s.LogDebugf("fetchAndPublishBlockMetadata: %s", blockID.ToHex())
+	resp, err := s.NodeBridge.Client().ReadBlockMetadata(ctx, inx.NewBlockId(blockID))
 	if err != nil {
 		return
 	}
-	s.PublishMessageMetadata(resp)
+	s.PublishBlockMetadata(resp)
 }
 
-func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID *iotago.OutputID) {
+func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.OutputID) {
 	s.LogDebugf("fetchAndPublishOutput: %s", outputID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
@@ -437,22 +442,22 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID *iotago.Out
 	s.PublishOutput(resp.GetLedgerIndex(), resp.GetOutput())
 }
 
-func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID *iotago.TransactionID) {
+func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID iotago.TransactionID) {
 	s.LogDebugf("fetchAndPublishTransactionInclusion: %s", transactionID.ToHex())
-	outputID := &iotago.OutputID{}
+	outputID := iotago.OutputID{}
 	copy(outputID[:], transactionID[:])
 
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
 		return
 	}
-	s.fetchAndPublishTransactionInclusionWithMessage(ctx, transactionID, resp.GetOutput().UnwrapMessageID())
+	s.fetchAndPublishTransactionInclusionWithBlock(ctx, transactionID, resp.GetOutput().UnwrapBlockID())
 }
 
-func (s *Server) fetchAndPublishTransactionInclusionWithMessage(ctx context.Context, transactionID *iotago.TransactionID, messageID iotago.MessageID) {
-	resp, err := s.NodeBridge.Client().ReadMessage(ctx, inx.NewMessageId(messageID))
+func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Context, transactionID iotago.TransactionID, blockID iotago.BlockID) {
+	resp, err := s.NodeBridge.Client().ReadBlock(ctx, inx.NewBlockId(blockID))
 	if err != nil {
 		return
 	}
-	s.PublishTransactionIncludedMessage(transactionID, resp)
+	s.PublishTransactionIncludedBlock(transactionID, resp)
 }

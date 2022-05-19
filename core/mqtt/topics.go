@@ -2,7 +2,7 @@ package mqtt
 
 // Topic names
 const (
-	parameterMessageID     = "{messageId}"
+	parameterBlockID       = "{blockId}"
 	parameterTransactionID = "{transactionId}"
 	parameterOutputID      = "{outputId}"
 	parameterTag           = "{tag}"
@@ -16,17 +16,17 @@ const (
 	topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
 	topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
 
-	topicMessages                         = "messages"                                         // iotago.Message serialized => []bytes
-	topicMessagesTransaction              = "messages/transaction"                             // iotago.Message serialized => []bytes
-	topicMessagesTransactionTaggedData    = "messages/transaction/tagged-data"                 // iotago.Message serialized => []bytes
-	topicMessagesTransactionTaggedDataTag = "messages/transaction/tagged-data/" + parameterTag // iotago.Message serialized => []bytes
-	topicMessagesTaggedData               = "messages/tagged-data"                             // iotago.Message serialized => []bytes
-	topicMessagesTaggedDataTag            = "messages/tagged-data/" + parameterTag             // iotago.Message serialized => []bytes
+	topicBlocks                         = "blocks"                                         // iotago.Block serialized => []bytes
+	topicBlocksTransaction              = "blocks/transaction"                             // iotago.Block serialized => []bytes
+	topicBlocksTransactionTaggedData    = "blocks/transaction/tagged-data"                 // iotago.Block serialized => []bytes
+	topicBlocksTransactionTaggedDataTag = "blocks/transaction/tagged-data/" + parameterTag // iotago.Block serialized => []bytes
+	topicBlocksTaggedData               = "blocks/tagged-data"                             // iotago.Block serialized => []bytes
+	topicBlocksTaggedDataTag            = "blocks/tagged-data/" + parameterTag             // iotago.Block serialized => []bytes
 
-	topicTransactionsIncludedMessage = "transactions/" + parameterTransactionID + "/included-message" // iotago.Message serialized => []bytes
+	topicTransactionsIncludedBlock = "transactions/" + parameterTransactionID + "/included-block" // iotago.Block serialized => []bytes
 
-	topicMessageMetadata           = "message-metadata/" + parameterMessageID // messageMetadataPayload	// renotify if "reattach" or "promote" changes? => add new INX event?
-	topicMessageMetadataReferenced = "message-metadata/referenced"            // messageMetadataPayload
+	topicBlockMetadata           = "block-metadata/" + parameterBlockID // blockMetadataPayload	// renotify if "reattach" or "promote" changes? => add new INX event?
+	topicBlockMetadataReferenced = "block-metadata/referenced"          // blockMetadataPayload
 
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
 	topicNFTOutputs                              = "outputs/nfts/" + parameterNFTID                                           // outputPayload
