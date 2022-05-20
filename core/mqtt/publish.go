@@ -55,33 +55,33 @@ func (s *Server) PublishReceipt(r *inx.RawReceipt) {
 	s.PublishOnTopicIfSubscribed(topicReceipts, receipt)
 }
 
-func (s *Server) PublishBlock(msg *inx.RawBlock) {
+func (s *Server) PublishBlock(blk *inx.RawBlock) {
 
-	block, err := msg.UnwrapBlock(serializer.DeSeriModeNoValidation, nil)
+	block, err := blk.UnwrapBlock(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
 		return
 	}
 
-	s.PublishRawOnTopicIfSubscribed(topicBlocks, msg.GetData())
+	s.PublishRawOnTopicIfSubscribed(topicBlocks, blk.GetData())
 
 	switch payload := block.Payload.(type) {
 	case *iotago.Transaction:
-		s.PublishRawOnTopicIfSubscribed(topicBlocksTransaction, msg.GetData())
+		s.PublishRawOnTopicIfSubscribed(topicBlocksTransaction, blk.GetData())
 
 		switch p := payload.Essence.Payload.(type) {
 		case *iotago.TaggedData:
-			s.PublishRawOnTopicIfSubscribed(topicBlocksTransactionTaggedData, msg.GetData())
+			s.PublishRawOnTopicIfSubscribed(topicBlocksTransactionTaggedData, blk.GetData())
 			if len(p.Tag) > 0 {
 				txTaggedDataTagTopic := strings.ReplaceAll(topicBlocksTransactionTaggedDataTag, parameterTag, iotago.EncodeHex(p.Tag))
-				s.PublishRawOnTopicIfSubscribed(txTaggedDataTagTopic, msg.GetData())
+				s.PublishRawOnTopicIfSubscribed(txTaggedDataTagTopic, blk.GetData())
 			}
 		}
 
 	case *iotago.TaggedData:
-		s.PublishRawOnTopicIfSubscribed(topicBlocksTaggedData, msg.GetData())
+		s.PublishRawOnTopicIfSubscribed(topicBlocksTaggedData, blk.GetData())
 		if len(payload.Tag) > 0 {
 			taggedDataTagTopic := strings.ReplaceAll(topicBlocksTaggedDataTag, parameterTag, iotago.EncodeHex(payload.Tag))
-			s.PublishRawOnTopicIfSubscribed(taggedDataTagTopic, msg.GetData())
+			s.PublishRawOnTopicIfSubscribed(taggedDataTagTopic, blk.GetData())
 		}
 
 	case *iotago.Milestone:
