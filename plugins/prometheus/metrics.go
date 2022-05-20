@@ -2,7 +2,6 @@ package prometheus
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"github.com/gohornet/inx-mqtt/core/mqtt"
 )
@@ -73,13 +72,6 @@ func registerMQTTMetrics(registry *prometheus.Registry) {
 	mqttBrokerInflight = registerNewMQTTBrokerGauge(registry, "inflight", "The number of messages currently in-flight.")
 	mqttBrokerSubscriptions = registerNewMQTTBrokerGauge(registry, "subscriptions", "The total number of filter subscriptions.")
 	mqttBrokerTopicsManagerSize = registerNewMQTTBrokerGauge(registry, "topics_manager_size", "The number of active topics in the topics manager.")
-
-	if ParamsPrometheus.GoMetrics {
-		registry.MustRegister(collectors.NewGoCollector())
-	}
-	if ParamsPrometheus.ProcessMetrics {
-		registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	}
 }
 
 func collectMQTTBroker(server *mqtt.Server) {

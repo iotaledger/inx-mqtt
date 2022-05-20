@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/dig"
 
@@ -62,8 +63,7 @@ func provide(c *dig.Container) error {
 
 func configure() error {
 
-	registry := prometheus.NewRegistry()
-	registerMQTTMetrics(registry)
+	registry := registerMetrics()
 
 	deps.PrometheusEcho.GET("/metrics", func(c echo.Context) error {
 
@@ -75,6 +75,11 @@ func configure() error {
 				EnableOpenMetrics: true,
 			},
 		)
+
+		if ParamsPrometheus.PromhttpMetrics {
+			handler = promhttp.InstrumentMetricHandler(registry, handler)
+		}
+
 		handler.ServeHTTP(c.Response().Writer, c.Request())
 		return nil
 	})
@@ -104,4 +109,20 @@ func run() error {
 		shutdownCtxCancel()
 		Plugin.LogInfo("Stopping Prometheus exporter ... done")
 	}, daemon.PriorityStopPrometheus)
+}
+
+func registerMetrics() *prometheus.Registry {
+	registry := prometheus.NewRegistry()
+
+	if ParamsPrometheus.MQTTMetrics {
+		registerMQTTMetrics(registry)
+	}
+	if ParamsPrometheus.GoMetrics {
+		registry.MustRegister(collectors.NewGoCollector())
+	}
+	if ParamsPrometheus.ProcessMetrics {
+		registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	}
+
+	return registry
 }
