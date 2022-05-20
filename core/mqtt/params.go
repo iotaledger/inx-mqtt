@@ -24,8 +24,8 @@ type ParametersMQTT struct {
 
 		TLS struct {
 			Enabled         bool   `default:"false" usage:"whether to enable TLS for TCP connections"`
-			CertificatePath string `default:"" usage:"the path to the certificate file (x509 PEM) for TCP connections with TLS"`
-			PrivateKeyPath  string `default:"" usage:"the path to the private key file (x509 PEM) for TCP connections with TLS"`
+			PrivateKeyPath  string `default:"private_key.pem" usage:"the path to the private key file (x509 PEM) for TCP connections with TLS"`
+			CertificatePath string `default:"certificate.pem" usage:"the path to the certificate file (x509 PEM) for TCP connections with TLS"`
 		} `name:"tls"`
 	} `name:"tcp"`
 }

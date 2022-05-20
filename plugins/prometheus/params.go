@@ -4,10 +4,18 @@ import (
 	"github.com/iotaledger/hive.go/app"
 )
 
+// ParametersPrometheus contains the definition of the parameters used by Prometheus.
 type ParametersPrometheus struct {
-	BindAddress    string `default:"localhost:9312" usage:"bind address on which the Prometheus HTTP server listens""`
-	GoMetrics      bool   `default:"false" usage:"whether to include go metrics""`
-	ProcessMetrics bool   `default:"false" usage:"whether to include process metrics""`
+	// BindAddress defines the bind address on which the Prometheus exporter listens on.
+	BindAddress string `default:"localhost:9312" usage:"the bind address on which the Prometheus HTTP server listens on"`
+	// MQTTMetrics defines whether to include MQTT metrics.
+	MQTTMetrics bool `name:"mqttMetrics" default:"true" usage:"whether to include MQTT metrics"`
+	// GoMetrics defines whether to include go metrics.
+	GoMetrics bool `default:"false" usage:"whether to include go metrics"`
+	// ProcessMetrics defines whether to include process metrics.
+	ProcessMetrics bool `default:"false" usage:"whether to include process metrics"`
+	// PromhttpMetrics defines whether to include promhttp metrics.
+	PromhttpMetrics bool `default:"false" usage:"whether to include promhttp metrics"`
 }
 
 var ParamsPrometheus = &ParametersPrometheus{}

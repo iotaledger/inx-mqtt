@@ -4,7 +4,8 @@
     "disablePlugins": [],
     "enablePlugins": [
       "Prometheus"
-    ]
+    ],
+    "stopGracePeriod": "5m"
   },
   "inx": {
     "address": "localhost:9029"
@@ -34,9 +35,14 @@
       }
     }
   },
+  "profiling": {
+    "bindAddress": "localhost:6060"
+  },
   "prometheus": {
+    "bindAddress": "localhost:9312",
+    "mqttMetrics": true,
     "goMetrics": false,
     "processMetrics": false,
-    "bindAddress": "localhost:9312"
+    "promhttpMetrics": false
   }
 }
