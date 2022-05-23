@@ -11,22 +11,21 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/gohornet/inx-app/nodebridge"
 	"github.com/gohornet/inx-mqtt/pkg/mqtt"
-	"github.com/gohornet/inx-mqtt/pkg/nodebridge"
 	"github.com/iotaledger/hive.go/app/core/shutdown"
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/logger"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v3"
 )
 
 const (
-	grpcListenToLatestMilestone    = "INX.ListenToLatestMilestone"
-	grpcListenToConfirmedMilestone = "INX.ListenToConfirmedMilestone"
-	grpcListenToBlocks             = "INX.ListenToBlocks"
-	grpcListenToSolidBlocks        = "INX.ListenToSolidBlocks"
-	grpcListenToReferencedBlocks   = "INX.ListenToReferencedBlocks"
-	grpcListenToLedgerUpdates      = "INX.ListenToLedgerUpdates"
-	grpcListenToMigrationReceipts  = "INX.ListenToMigrationReceipts"
+	grpcListenToBlocks            = "INX.ListenToBlocks"
+	grpcListenToSolidBlocks       = "INX.ListenToSolidBlocks"
+	grpcListenToReferencedBlocks  = "INX.ListenToReferencedBlocks"
+	grpcListenToLedgerUpdates     = "INX.ListenToLedgerUpdates"
+	grpcListenToMigrationReceipts = "INX.ListenToMigrationReceipts"
 )
 
 var (
@@ -97,8 +96,21 @@ func (s *Server) Run(ctx context.Context) {
 		}
 	}
 
-	s.listenKeepalive(ctx)
+	onLatestMilestone := events.NewClosure(func(ms *nodebridge.Milestone) {
+		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, ms)
+	})
+
+	onConfirmedMilestone := events.NewClosure(func(ms *nodebridge.Milestone) {
+		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, ms)
+	})
+
+	s.NodeBridge.Events.LatestMilestoneChanged.Attach(onLatestMilestone)
+	s.NodeBridge.Events.ConfirmedMilestoneChanged.Attach(onConfirmedMilestone)
+
 	<-ctx.Done()
+
+	s.NodeBridge.Events.LatestMilestoneChanged.Detach(onLatestMilestone)
+	s.NodeBridge.Events.ConfirmedMilestoneChanged.Detach(onConfirmedMilestone)
 
 	if s.brokerOptions.WebsocketEnabled {
 		s.LogInfo("Removing API route...")
@@ -110,19 +122,13 @@ func (s *Server) Run(ctx context.Context) {
 	s.MQTTBroker.Stop()
 }
 
-func (s *Server) listenKeepalive(ctx context.Context) {
-	s.startListenIfNeeded(ctx, grpcListenToLatestMilestone, s.listenToLatestMilestone)
-}
-
 func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 	switch topic {
 	case topicMilestoneInfoLatest:
-		s.startListenIfNeeded(ctx, grpcListenToLatestMilestone, s.listenToLatestMilestone)
-		go s.fetchAndPublishMilestoneTopics(ctx)
+		go s.publishLatestMilestoneTopic()
 
 	case topicMilestoneInfoConfirmed:
-		s.startListenIfNeeded(ctx, grpcListenToConfirmedMilestone, s.listenToConfirmedMilestone)
-		go s.fetchAndPublishMilestoneTopics(ctx)
+		go s.publishConfirmedMilestoneTopic()
 
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
 		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
@@ -157,12 +163,6 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 
 func (s *Server) onUnsubscribeTopic(topic string) {
 	switch topic {
-	case topicMilestoneInfoLatest:
-		s.stopListenIfNeeded(grpcListenToLatestMilestone)
-
-	case topicMilestoneInfoConfirmed:
-		s.stopListenIfNeeded(grpcListenToConfirmedMilestone)
-
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToBlocks)
 
@@ -239,52 +239,6 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 		}
 		s.grpcSubscriptionsLock.Unlock()
 	}()
-}
-
-func (s *Server) listenToLatestMilestone(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
-	stream, err := s.NodeBridge.Client().ListenToLatestMilestones(c, &inx.NoParams{})
-	if err != nil {
-		return err
-	}
-	for {
-		milestone, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
-				break
-			}
-			return err
-		}
-		if c.Err() != nil {
-			break
-		}
-		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, milestone.GetMilestoneInfo())
-	}
-	return nil
-}
-
-func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
-	stream, err := s.NodeBridge.Client().ListenToConfirmedMilestones(c, &inx.MilestoneRangeRequest{})
-	if err != nil {
-		return err
-	}
-	for {
-		milestone, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
-				break
-			}
-			return err
-		}
-		if c.Err() != nil {
-			break
-		}
-		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, milestone.GetMilestoneInfo())
-	}
-	return nil
 }
 
 func (s *Server) listenToBlocks(ctx context.Context) error {
@@ -410,14 +364,20 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
-	s.LogDebug("fetchAndPublishMilestoneTopics")
-	resp, err := s.NodeBridge.Client().ReadNodeStatus(ctx, &inx.NoParams{})
-	if err != nil {
-		return
+func (s *Server) publishLatestMilestoneTopic() {
+	s.LogDebug("publishLatestMilestoneTopic")
+	latest, err := s.NodeBridge.LatestMilestone()
+	if err == nil {
+		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, latest)
 	}
-	s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, resp.GetLatestMilestone().MilestoneInfo)
-	s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, resp.GetConfirmedMilestone().MilestoneInfo)
+}
+
+func (s *Server) publishConfirmedMilestoneTopic() {
+	s.LogDebug("publishConfirmedMilestoneTopic")
+	confirmed, err := s.NodeBridge.ConfirmedMilestone()
+	if err == nil {
+		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, confirmed)
+	}
 }
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
