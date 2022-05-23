@@ -215,7 +215,7 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 		return strings.ReplaceAll(topic, parameterAddress, addressString)
 	}
 
-	unlockConditions := output.UnlockConditionsSet()
+	unlockConditions := output.UnlockConditionSet()
 
 	// this tracks the addresses used by any unlock condition
 	// so that after checking all conditions we can see if anyone is subscribed to the wildcard

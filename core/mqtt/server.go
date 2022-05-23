@@ -244,7 +244,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 func (s *Server) listenToLatestMilestone(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	stream, err := s.NodeBridge.Client().ListenToLatestMilestone(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToLatestMilestones(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -267,7 +267,7 @@ func (s *Server) listenToLatestMilestone(ctx context.Context) error {
 func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	stream, err := s.NodeBridge.Client().ListenToConfirmedMilestone(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToConfirmedMilestones(c, &inx.MilestoneRangeRequest{})
 	if err != nil {
 		return err
 	}
@@ -290,8 +290,7 @@ func (s *Server) listenToConfirmedMilestone(ctx context.Context) error {
 func (s *Server) listenToBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.BlockFilter{}
-	stream, err := s.NodeBridge.Client().ListenToBlocks(c, filter)
+	stream, err := s.NodeBridge.Client().ListenToBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -314,8 +313,7 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.BlockFilter{}
-	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(c, filter)
+	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -338,8 +336,7 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.BlockFilter{}
-	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(c, filter)
+	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -362,8 +359,7 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
-	filter := &inx.LedgerRequest{}
-	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(c, filter)
+	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(c, &inx.MilestoneRangeRequest{})
 	if err != nil {
 		return err
 	}
@@ -420,8 +416,8 @@ func (s *Server) fetchAndPublishMilestoneTopics(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, resp.GetLatestMilestone())
-	s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, resp.GetConfirmedMilestone())
+	s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, resp.GetLatestMilestone().MilestoneInfo)
+	s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, resp.GetConfirmedMilestone().MilestoneInfo)
 }
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
