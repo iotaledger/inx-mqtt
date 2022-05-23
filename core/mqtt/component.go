@@ -4,9 +4,9 @@ import (
 	"context"
 	"go.uber.org/dig"
 
+	"github.com/gohornet/inx-app/nodebridge"
 	"github.com/gohornet/inx-mqtt/pkg/daemon"
 	"github.com/gohornet/inx-mqtt/pkg/mqtt"
-	"github.com/gohornet/inx-mqtt/pkg/nodebridge"
 	"github.com/iotaledger/hive.go/app"
 	"github.com/iotaledger/hive.go/app/core/shutdown"
 )

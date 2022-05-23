@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/gohornet/inx-mqtt/core/inx"
+	"github.com/gohornet/inx-app/inx"
 	"github.com/gohornet/inx-mqtt/core/mqtt"
 	"github.com/gohornet/inx-mqtt/plugins/prometheus"
 	"github.com/iotaledger/hive.go/app"
@@ -14,7 +14,7 @@ var (
 	Name = "inx-mqtt"
 
 	// Version of the app.
-	Version = "0.6.1"
+	Version = "0.7.0"
 )
 
 func App() *app.App {

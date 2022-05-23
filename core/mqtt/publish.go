@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/gohornet/inx-app/nodebridge"
 	"github.com/iotaledger/hive.go/serializer/v2"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v3"
@@ -37,13 +38,11 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 	s.MQTTBroker.Send(topic, jsonPayload)
 }
 
-func (s *Server) PublishMilestoneOnTopic(topic string, milestoneInfo *inx.MilestoneInfo) {
-	milestoneID := milestoneInfo.GetMilestoneId().Unwrap()
-
+func (s *Server) PublishMilestoneOnTopic(topic string, ms *nodebridge.Milestone) {
 	s.PublishOnTopicIfSubscribed(topic, &milestoneInfoPayload{
-		Index:       milestoneInfo.GetMilestoneIndex(),
-		Time:        milestoneInfo.GetMilestoneTimestamp(),
-		MilestoneID: iotago.EncodeHex(milestoneID[:]),
+		Index:       ms.Milestone.Index,
+		Time:        ms.Milestone.Timestamp,
+		MilestoneID: ms.MilestoneID.ToHex(),
 	})
 }
 
@@ -215,7 +214,7 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 		return strings.ReplaceAll(topic, parameterAddress, addressString)
 	}
 
-	unlockConditions := output.UnlockConditionsSet()
+	unlockConditions := output.UnlockConditionSet()
 
 	// this tracks the addresses used by any unlock condition
 	// so that after checking all conditions we can see if anyone is subscribed to the wildcard
