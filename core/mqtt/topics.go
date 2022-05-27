@@ -29,9 +29,9 @@ const (
 	topicBlockMetadataReferenced = "block-metadata/referenced"          // blockMetadataPayload
 
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
-	topicNFTOutputs                              = "outputs/nfts/" + parameterNFTID                                           // outputPayload
-	topicAliasOutputs                            = "outputs/aliases/" + parameterAliasID                                      // outputPayload
-	topicFoundryOutputs                          = "outputs/foundries/" + parameterFoundryID                                  // outputPayload
+	topicNFTOutputs                              = "outputs/nft/" + parameterNFTID                                            // outputPayload
+	topicAliasOutputs                            = "outputs/alias/" + parameterAliasID                                        // outputPayload
+	topicFoundryOutputs                          = "outputs/foundry/" + parameterFoundryID                                    // outputPayload
 	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/" + parameterCondition + "/" + parameterAddress            // outputPayload
 	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/" + parameterCondition + "/" + parameterAddress + "/spent" // outputPayload
 
