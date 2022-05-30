@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gohornet/inx-mqtt/core/app"
+	"github.com/iotaledger/inx-mqtt/core/app"
 )
 
 func main() {

@@ -1,13 +1,13 @@
-module github.com/gohornet/inx-mqtt
+module github.com/iotaledger/inx-mqtt
 
 go 1.18
 
 require (
-	github.com/gohornet/inx-app v0.0.0-20220523132442-95017a89cb2b
-	github.com/iotaledger/hive.go v0.0.0-20220525131705-7bc68cc983dd
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220525131705-7bc68cc983dd
-	github.com/iotaledger/inx/go v0.0.0-20220524164805-a71880dd53c1
-	github.com/iotaledger/iota.go/v3 v3.0.0-20220519135423-82921868d5cd
+	github.com/iotaledger/hive.go v0.0.0-20220530162014-976ec1e82594
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220530162014-976ec1e82594
+	github.com/iotaledger/inx-app v0.0.0-20220530162244-06ae0e8eb802
+	github.com/iotaledger/inx/go v0.0.0-20220530154855-f371ab0a309d
+	github.com/iotaledger/iota.go/v3 v3.0.0-20220530132039-ec319e60cc56
 	github.com/labstack/echo/v4 v4.7.2
 	github.com/mochi-co/mqtt v1.2.2
 	github.com/pkg/errors v0.9.1
@@ -66,7 +66,7 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
-	google.golang.org/genproto v0.0.0-20220526192754-51939a95c655 // indirect
+	google.golang.org/genproto v0.0.0-20220527130721-00d5c0f3be58 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

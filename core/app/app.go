@@ -1,12 +1,12 @@
 package app
 
 import (
-	"github.com/gohornet/inx-app/inx"
-	"github.com/gohornet/inx-mqtt/core/mqtt"
-	"github.com/gohornet/inx-mqtt/plugins/prometheus"
 	"github.com/iotaledger/hive.go/app"
 	"github.com/iotaledger/hive.go/app/core/shutdown"
 	"github.com/iotaledger/hive.go/app/plugins/profiling"
+	"github.com/iotaledger/inx-app/inx"
+	"github.com/iotaledger/inx-mqtt/core/mqtt"
+	"github.com/iotaledger/inx-mqtt/plugins/prometheus"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 	Name = "inx-mqtt"
 
 	// Version of the app.
-	Version = "0.8.0"
+	Version = "0.9.0"
 )
 
 func App() *app.App {

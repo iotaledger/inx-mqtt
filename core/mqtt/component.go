@@ -4,11 +4,11 @@ import (
 	"context"
 	"go.uber.org/dig"
 
-	"github.com/gohornet/inx-app/nodebridge"
-	"github.com/gohornet/inx-mqtt/pkg/daemon"
-	"github.com/gohornet/inx-mqtt/pkg/mqtt"
 	"github.com/iotaledger/hive.go/app"
 	"github.com/iotaledger/hive.go/app/core/shutdown"
+	"github.com/iotaledger/inx-app/nodebridge"
+	"github.com/iotaledger/inx-mqtt/pkg/daemon"
+	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
 )
 
 const (
