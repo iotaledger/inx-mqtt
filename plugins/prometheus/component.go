@@ -13,9 +13,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/dig"
 
-	"github.com/gohornet/inx-mqtt/core/mqtt"
-	"github.com/gohornet/inx-mqtt/pkg/daemon"
 	"github.com/iotaledger/hive.go/app"
+	"github.com/iotaledger/inx-mqtt/core/mqtt"
+	"github.com/iotaledger/inx-mqtt/pkg/daemon"
 )
 
 func init() {
