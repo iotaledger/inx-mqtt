@@ -117,8 +117,9 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	singleBlockTopic := strings.ReplaceAll(topicBlockMetadata, parameterBlockID, blockID)
 	hasSingleBlockTopicSubscriber := s.MQTTBroker.HasSubscribers(singleBlockTopic)
 	hasAllBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataReferenced)
+	hasTipScoreUpdatesSubscriber := s.MQTTBroker.HasSubscribers(topicTipScoreUpdates)
 
-	if !hasSingleBlockTopicSubscriber && !hasAllBlocksTopicSubscriber {
+	if !hasSingleBlockTopicSubscriber && !hasAllBlocksTopicSubscriber && !hasTipScoreUpdatesSubscriber {
 		return
 	}
 
@@ -170,6 +171,9 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	}
 	if referenced && hasAllBlocksTopicSubscriber {
 		s.MQTTBroker.Send(topicBlockMetadataReferenced, jsonPayload)
+	}
+	if hasTipScoreUpdatesSubscriber {
+		s.MQTTBroker.Send(topicTipScoreUpdates, jsonPayload)
 	}
 }
 

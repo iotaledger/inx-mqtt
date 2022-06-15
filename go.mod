@@ -6,7 +6,7 @@ require (
 	github.com/iotaledger/hive.go v0.0.0-20220530162014-976ec1e82594
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220530162014-976ec1e82594
 	github.com/iotaledger/inx-app v0.0.0-20220530162244-06ae0e8eb802
-	github.com/iotaledger/inx/go v0.0.0-20220530154855-f371ab0a309d
+	github.com/iotaledger/inx/go v0.0.0-20220615084134-f684c66925f0
 	github.com/iotaledger/iota.go/v3 v3.0.0-20220530132039-ec319e60cc56
 	github.com/labstack/echo/v4 v4.7.2
 	github.com/mochi-co/mqtt v1.2.2

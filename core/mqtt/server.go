@@ -26,6 +26,7 @@ const (
 	grpcListenToReferencedBlocks  = "INX.ListenToReferencedBlocks"
 	grpcListenToLedgerUpdates     = "INX.ListenToLedgerUpdates"
 	grpcListenToMigrationReceipts = "INX.ListenToMigrationReceipts"
+	grpcListenToTipScoreUpdates   = "INX.ListenToTipScoreUpdates"
 )
 
 var (
@@ -133,6 +134,9 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
 		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
+	case topicTipScoreUpdates:
+		s.startListenIfNeeded(ctx, grpcListenToTipScoreUpdates, s.listenToTipScoreUpdates)
+
 	case topicReceipts:
 		s.startListenIfNeeded(ctx, grpcListenToMigrationReceipts, s.listenToMigrationReceipts)
 
@@ -165,6 +169,9 @@ func (s *Server) onUnsubscribeTopic(topic string) {
 	switch topic {
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToBlocks)
+
+	case topicTipScoreUpdates:
+		s.stopListenIfNeeded(grpcListenToTipScoreUpdates)
 
 	case topicReceipts:
 		s.stopListenIfNeeded(grpcListenToMigrationReceipts)
@@ -291,6 +298,29 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(c, &inx.NoParams{})
+	if err != nil {
+		return err
+	}
+	for {
+		blockMetadata, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF || status.Code(err) == codes.Canceled {
+				break
+			}
+			return err
+		}
+		if c.Err() != nil {
+			break
+		}
+		s.PublishBlockMetadata(blockMetadata)
+	}
+	return nil
+}
+
+func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
+	c, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}

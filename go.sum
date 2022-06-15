@@ -326,6 +326,8 @@ github.com/iotaledger/inx-app v0.0.0-20220530162244-06ae0e8eb802 h1:6NeocjJieR1P
 github.com/iotaledger/inx-app v0.0.0-20220530162244-06ae0e8eb802/go.mod h1:rRntpU94z19OIyx9K/7hayDYyeF71O1C7RYIeeZq2PM=
 github.com/iotaledger/inx/go v0.0.0-20220530154855-f371ab0a309d h1:caHiwyxAAcHZKuoOpPBE9IWo15ymYN6wGyuA4/pUkEI=
 github.com/iotaledger/inx/go v0.0.0-20220530154855-f371ab0a309d/go.mod h1:rp86sgkAH4Wbq2qRYfrOTrUeoN6ogXrXefPnV4WNfjk=
+github.com/iotaledger/inx/go v0.0.0-20220615084134-f684c66925f0 h1:hm1qlsyPtu7uc7idMe/Yv2fdtVQ/nxMs51QHtN79kPw=
+github.com/iotaledger/inx/go v0.0.0-20220615084134-f684c66925f0/go.mod h1:rp86sgkAH4Wbq2qRYfrOTrUeoN6ogXrXefPnV4WNfjk=
 github.com/iotaledger/iota.go v1.0.0 h1:tqm1FxJ/zOdzbrAaQ5BQpVF8dUy2eeGlSeWlNG8GoXY=
 github.com/iotaledger/iota.go v1.0.0/go.mod h1:RiKYwDyY7aCD1L0YRzHSjOsJ5mUR9yvQpvhZncNcGQI=
 github.com/iotaledger/iota.go/v3 v3.0.0-20220530132039-ec319e60cc56 h1:ibtnTlN/oeipqXyPL9sb95U5rJhV7Lh318EHoXsND2U=
