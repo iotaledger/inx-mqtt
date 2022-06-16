@@ -28,6 +28,8 @@ const (
 	topicBlockMetadata           = "block-metadata/" + parameterBlockID // blockMetadataPayload	// renotify if "reattach" or "promote" changes? => add new INX event?
 	topicBlockMetadataReferenced = "block-metadata/referenced"          // blockMetadataPayload
 
+	topicTipScoreUpdates = "tip-score-updates" // blockMetadataPayload
+
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
 	topicNFTOutputs                              = "outputs/nft/" + parameterNFTID                                            // outputPayload
 	topicAliasOutputs                            = "outputs/alias/" + parameterAliasID                                        // outputPayload
