@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
 	go.uber.org/dig v1.14.1
-	google.golang.org/grpc v1.46.2
+	google.golang.org/grpc v1.47.0
 )
 
 require (
