@@ -14,13 +14,13 @@ import (
 
 // Broker is a simple mqtt publisher abstraction.
 type Broker struct {
-	broker       *mqtt.Server
-	opts         *BrokerOptions
-	topicManager *topicManager
+	broker      *mqtt.Server
+	opts        *BrokerOptions
+	subMananger *subscriberManager
 }
 
 // NewBroker creates a new broker.
-func NewBroker(onSubscribe OnSubscribeHandler, onUnsubscribe OnUnsubscribeHandler, brokerOpts *BrokerOptions) (*Broker, error) {
+func NewBroker(onConnect OnConnectH, onDisconnect OnDisconnectH, onSubscribe OnSubscribeH, onUnsubscribe OnUnsubscribeH, brokerOpts *BrokerOptions) (*Broker, error) {
 
 	if !brokerOpts.WebsocketEnabled && !brokerOpts.TCPEnabled {
 		return nil, errors.New("at least websocket or TCP must be enabled")
@@ -84,21 +84,32 @@ func NewBroker(onSubscribe OnSubscribeHandler, onUnsubscribe OnUnsubscribeHandle
 		}
 	}
 
-	t := newTopicManager(onSubscribe, onUnsubscribe, brokerOpts.TopicCleanupThreshold)
-
+	s := newSubscriberManager(onConnect, onDisconnect, onSubscribe, onUnsubscribe, brokerOpts.TopicCleanupThreshold)
 	// bind the broker events to the topic manager to track the subscriptions
 	broker.Events.OnSubscribe = func(filter string, cl events.Client, qos byte) {
-		t.Subscribe(filter)
+		fmt.Printf("<< OnSubscribe %s: %v\n", cl.ID, filter)
+		s.Subscribe(cl.ID, filter)
 	}
 
 	broker.Events.OnUnsubscribe = func(filter string, cl events.Client) {
-		t.Unsubscribe(filter)
+		fmt.Printf("<< OnUnsubscribe %s: %v\n", cl.ID, filter)
+		s.Unsubscribe(cl.ID, filter)
+	}
+
+	broker.Events.OnConnect = func(cl events.Client, pk events.Packet) {
+		fmt.Printf("<< OnConnect client connected %s: \n", cl.ID)
+		s.Connect(cl.ID)
+	}
+
+	broker.Events.OnDisconnect = func(cl events.Client, err error) {
+		fmt.Printf("<< OnDisconnect client disconnected %s: %v\n", cl.ID, err)
+		s.Disconnect(cl.ID)
 	}
 
 	return &Broker{
-		broker:       broker,
-		opts:         brokerOpts,
-		topicManager: t,
+		broker:      broker,
+		opts:        brokerOpts,
+		subMananger: s,
 	}, nil
 }
 
@@ -118,7 +129,7 @@ func (b *Broker) SystemInfo() *system.Info {
 }
 
 func (b *Broker) HasSubscribers(topic string) bool {
-	return b.topicManager.hasSubscribers(topic)
+	return b.subMananger.hasTopic(topic)
 }
 
 // Send publishes a message.
@@ -128,5 +139,5 @@ func (b *Broker) Send(topic string, payload []byte) error {
 
 // TopicsManagerSize returns the size of the underlying map of the topics manager.
 func (b *Broker) TopicsManagerSize() int {
-	return b.topicManager.Size()
+	return b.subMananger.Size()
 }

@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -25,12 +26,14 @@ func (t *topicManager) Subscribe(topicName string) {
 	defer t.subscribedTopicsLock.Unlock()
 
 	count, has := t.subscribedTopics[topicName]
+	fmt.Printf("has: %v, count: %v\n", has, count)
 	if has {
 		t.subscribedTopics[topicName] = count + 1
 	} else {
 		t.subscribedTopics[topicName] = 1
 	}
 
+	fmt.Printf("size: %d\n", len(t.subscribedTopics))
 	if t.onSubscribe != nil {
 		t.onSubscribe(topicName)
 	}
@@ -49,6 +52,7 @@ func (t *topicManager) Unsubscribe(topicName string) {
 		}
 	}
 
+	fmt.Printf("Unsub size: %d\n", len(t.subscribedTopics))
 	if t.onUnsubscribe != nil {
 		t.onUnsubscribe(topicName)
 	}
@@ -59,6 +63,7 @@ func (t *topicManager) Size() int {
 	t.subscribedTopicsLock.RLock()
 	defer t.subscribedTopicsLock.RUnlock()
 
+	fmt.Printf("Size: %d\n", len(t.subscribedTopics))
 	return len(t.subscribedTopics)
 }
 
@@ -66,12 +71,14 @@ func (t *topicManager) hasSubscribers(topicName string) bool {
 	t.subscribedTopicsLock.RLock()
 	defer t.subscribedTopicsLock.RUnlock()
 
+	fmt.Printf("hasSub?: %d\n", len(t.subscribedTopics))
 	count, has := t.subscribedTopics[topicName]
 	return has && count > 0
 }
 
 // cleanupWithoutLocking recreates the subscribedTopics map to release memory for the garbage collector.
 func (t *topicManager) cleanupWithoutLocking() {
+	fmt.Printf("cleanupWithoutLocking: %d\n", len(t.subscribedTopics))
 	subscribedTopics := make(map[string]int)
 	for topicName, count := range t.subscribedTopics {
 		subscribedTopics[topicName] = count
@@ -82,6 +89,7 @@ func (t *topicManager) cleanupWithoutLocking() {
 
 // deleteTopic deletes a topic from the manager.
 func (t *topicManager) deleteTopic(topicName string) {
+	fmt.Printf("deleteTopic: %d\n", len(t.subscribedTopics))
 	delete(t.subscribedTopics, topicName)
 
 	// increase the deletion counter to trigger garbage collection

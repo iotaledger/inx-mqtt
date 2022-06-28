@@ -72,10 +72,14 @@ func NewServer(log *logger.Logger,
 
 func (s *Server) Run(ctx context.Context) {
 	broker, err := mqtt.NewBroker(
-		func(topicName string) {
-			s.onSubscribeTopic(ctx, topicName)
-		}, func(topicName string) {
-			s.onUnsubscribeTopic(topicName)
+		func(clientID string) {
+			s.onClientConnect(clientID)
+		}, func(clientID string) {
+			s.onClientDisconnect(clientID)
+		}, func(clientID string, topicName string) {
+			s.onSubscribeTopic(ctx, clientID, topicName)
+		}, func(clientID string, topicName string) {
+			s.onUnsubscribeTopic(clientID, topicName)
 		},
 		s.brokerOptions)
 	if err != nil {
@@ -123,7 +127,8 @@ func (s *Server) Run(ctx context.Context) {
 	s.MQTTBroker.Stop()
 }
 
-func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
+func (s *Server) onSubscribeTopic(ctx context.Context, id string, topic string) {
+	s.LogDebugf("onSubscribeTopic: %v", topic)
 	switch topic {
 	case topicMilestoneInfoLatest:
 		go s.publishLatestMilestoneTopic()
@@ -165,7 +170,8 @@ func (s *Server) onSubscribeTopic(ctx context.Context, topic string) {
 	}
 }
 
-func (s *Server) onUnsubscribeTopic(topic string) {
+func (s *Server) onUnsubscribeTopic(id string, topic string) {
+	s.LogDebugf("onUnsubscribeTopic: %v", topic)
 	switch topic {
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToBlocks)
@@ -190,11 +196,20 @@ func (s *Server) onUnsubscribeTopic(topic string) {
 	}
 }
 
+func (s *Server) onClientConnect(id string) {
+	// TODO?
+}
+
+func (s *Server) onClientDisconnect(id string) {
+	// TODO?
+}
+
 func (s *Server) stopListenIfNeeded(grpcCall string) {
 	s.grpcSubscriptionsLock.Lock()
 	defer s.grpcSubscriptionsLock.Unlock()
 
 	sub, ok := s.grpcSubscriptions[grpcCall]
+	s.LogDebugf("stop listen: %s, ok: %v", grpcCall, ok)
 	if ok {
 		// subscription found
 		// decrease amount of subscribers
@@ -213,6 +228,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 	defer s.grpcSubscriptionsLock.Unlock()
 
 	sub, ok := s.grpcSubscriptions[grpcCall]
+	s.LogDebugf("listen: %s, ok: %v", grpcCall, ok)
 	if ok {
 		// subscription already exists
 		// => increase count to track subscribers
