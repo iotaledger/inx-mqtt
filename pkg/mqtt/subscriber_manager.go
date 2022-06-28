@@ -1,7 +1,6 @@
 package mqtt
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -36,12 +35,12 @@ func (s *subscriberManager) Connect(id string) {
 func (s *subscriberManager) Disconnect(id string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
-	// remove the client ID from map
-	delete(s.subscribers, id)
-
+	// send disconnect notification then delete the subscriber
 	if s.onDisconnect != nil {
 		s.onDisconnect(id)
 	}
+	// remove the client ID from map
+	delete(s.subscribers, id)
 }
 
 func (s *subscriberManager) Subscribe(id string, topicName string) {
@@ -90,15 +89,9 @@ func (s *subscriberManager) Size() int {
 	return count
 }
 
-func (s *subscriberManager) DumpSubscribers() {
-	fmt.Println("========Dump==========")
-	for id, topics := range s.subscribers {
-		fmt.Println("ID: ", id)
-		for _, topic := range topics {
-			fmt.Println(topic)
-		}
-	}
-	fmt.Println("======================")
+// Returns topis of a subscriber
+func (s *subscriberManager) Topics(id string) map[string]string {
+	return s.subscribers[id]
 }
 
 func newSubscriberManager(onConnect OnConnectH, onDisconnect OnDisconnectH, onSubscribe OnSubscribeH, onUnsubscribe OnUnsubscribeH, cleanupThreshold int) *subscriberManager {

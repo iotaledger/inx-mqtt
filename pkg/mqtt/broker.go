@@ -87,22 +87,18 @@ func NewBroker(onConnect OnConnectH, onDisconnect OnDisconnectH, onSubscribe OnS
 	s := newSubscriberManager(onConnect, onDisconnect, onSubscribe, onUnsubscribe, brokerOpts.TopicCleanupThreshold)
 	// bind the broker events to the topic manager to track the subscriptions
 	broker.Events.OnSubscribe = func(filter string, cl events.Client, qos byte) {
-		fmt.Printf("<< OnSubscribe %s: %v\n", cl.ID, filter)
 		s.Subscribe(cl.ID, filter)
 	}
 
 	broker.Events.OnUnsubscribe = func(filter string, cl events.Client) {
-		fmt.Printf("<< OnUnsubscribe %s: %v\n", cl.ID, filter)
 		s.Unsubscribe(cl.ID, filter)
 	}
 
 	broker.Events.OnConnect = func(cl events.Client, pk events.Packet) {
-		fmt.Printf("<< OnConnect client connected %s: \n", cl.ID)
 		s.Connect(cl.ID)
 	}
 
 	broker.Events.OnDisconnect = func(cl events.Client, err error) {
-		fmt.Printf("<< OnDisconnect client disconnected %s: %v\n", cl.ID, err)
 		s.Disconnect(cl.ID)
 	}
 
@@ -130,6 +126,10 @@ func (b *Broker) SystemInfo() *system.Info {
 
 func (b *Broker) HasSubscribers(topic string) bool {
 	return b.subMananger.hasTopic(topic)
+}
+
+func (b *Broker) Topics(id string) map[string]string {
+	return b.subMananger.Topics(id)
 }
 
 // Send publishes a message.
