@@ -14,9 +14,9 @@ import (
 
 // Broker is a simple mqtt publisher abstraction.
 type Broker struct {
-	broker             *mqtt.Server
-	opts               *BrokerOptions
-	subscriberMananger *subscriberManager
+	broker            *mqtt.Server
+	opts              *BrokerOptions
+	subscriberManager *subscriberManager
 }
 
 // NewBroker creates a new broker.
@@ -103,9 +103,9 @@ func NewBroker(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscri
 	}
 
 	return &Broker{
-		broker:             broker,
-		opts:               brokerOpts,
-		subscriberMananger: s,
+		broker:            broker,
+		opts:              brokerOpts,
+		subscriberManager: s,
 	}, nil
 }
 
@@ -125,11 +125,11 @@ func (b *Broker) SystemInfo() *system.Info {
 }
 
 func (b *Broker) HasSubscribers(topic string) bool {
-	return b.subscriberMananger.hasTopic(topic)
+	return b.subscriberManager.hasTopic(topic)
 }
 
 func (b *Broker) Topics(id string) map[string]string {
-	return b.subscriberMananger.Topics(id)
+	return b.subscriberManager.Topics(id)
 }
 
 // Send publishes a message.
@@ -139,5 +139,5 @@ func (b *Broker) Send(topic string, payload []byte) error {
 
 // TopicsManagerSize returns the size of the underlying map of the topics manager.
 func (b *Broker) TopicsManagerSize() int {
-	return b.subscriberMananger.Size()
+	return b.subscriberManager.Size()
 }
