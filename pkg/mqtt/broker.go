@@ -61,7 +61,7 @@ func NewBroker(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscri
 			var err error
 			tcpAuthController, err = NewAuthAllowUsers(brokerOpts.TCPAuthPasswordSalt, brokerOpts.TCPAuthUsers)
 			if err != nil {
-				return nil, fmt.Errorf("Enabling TCP Authentication failed: %w", err)
+				return nil, fmt.Errorf("enabling TCP Authentication failed: %w", err)
 			}
 		} else {
 			tcpAuthController = &AuthAllowEveryone{}
@@ -72,7 +72,7 @@ func NewBroker(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscri
 			var err error
 			tls, err = NewTLSSettings(brokerOpts.TCPTLSCertificatePath, brokerOpts.TCPTLSPrivateKeyPath)
 			if err != nil {
-				return nil, fmt.Errorf("Enabling TCP TLS failed: %w", err)
+				return nil, fmt.Errorf("enabling TCP TLS failed: %w", err)
 			}
 		}
 

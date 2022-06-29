@@ -52,7 +52,7 @@ func (s *subscriberManager) Subscribe(id string, topicName string) {
 	defer s.subscriberLock.Unlock()
 
 	// check if the client has been connected
-	if _, has := s.subscribers[id]; has == false {
+	if _, has := s.subscribers[id]; !has {
 		s.subscribers[id] = make(map[string]string)
 	}
 	// add the topic to the corresponding ID
@@ -67,7 +67,7 @@ func (s *subscriberManager) Unsubscribe(id string, topicName string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
 
-	if _, has := s.subscribers[id]; has == false {
+	if _, has := s.subscribers[id]; !has {
 		return
 	}
 	// remove the topic from the corresponding ID
@@ -85,7 +85,7 @@ func (s *subscriberManager) hasTopic(topicName string) bool {
 	// check if the topic exists in all subscribers
 	for _, topics := range s.subscribers {
 		_, has := topics[topicName]
-		if has == true {
+		if has {
 			return true
 		}
 	}
