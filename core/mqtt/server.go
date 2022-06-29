@@ -128,7 +128,7 @@ func (s *Server) Run(ctx context.Context) {
 }
 
 func (s *Server) onSubscribeTopic(ctx context.Context, id string, topic string) {
-	s.LogDebugf("%s subscriber: %s", id, topic)
+	s.LogDebugf("%s subscribed to %s", id, topic)
 	switch topic {
 	case topicMilestoneInfoLatest:
 		go s.publishLatestMilestoneTopic()
@@ -171,7 +171,7 @@ func (s *Server) onSubscribeTopic(ctx context.Context, id string, topic string) 
 }
 
 func (s *Server) onUnsubscribeTopic(id string, topic string) {
-	s.LogDebugf("%s unsubscribe: %s", id, topic)
+	s.LogDebugf("%s unsubscribed from %s", id, topic)
 	switch topic {
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToBlocks)
@@ -198,11 +198,12 @@ func (s *Server) onUnsubscribeTopic(id string, topic string) {
 
 func (s *Server) onClientConnect(id string) {
 	// nothing to do at the moment
+	s.LogDebugf("onClientConnect %s", id)
 }
 
 func (s *Server) onClientDisconnect(id string) {
 	// unsubscribe topics of the client which it might lost connection accidentally
-	s.LogDebug("onClientDisconnect")
+	s.LogDebugf("onClientDisconnect %s", id)
 	for _, topic := range s.MQTTBroker.Topics(id) {
 		s.onUnsubscribeTopic(id, topic)
 	}

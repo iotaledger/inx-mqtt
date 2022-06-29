@@ -4,11 +4,12 @@ import (
 	"sync"
 )
 
-type OnSubscribeH func(topic string, id string)
-type OnUnsubscribeH func(topic string, id string)
-type OnConnectH func(id string)
-type OnDisconnectH func(id string)
+type OnSubscribeFunc func(topic string, id string)
+type OnUnsubscribeFunc func(topic string, id string)
+type OnConnectFunc func(id string)
+type OnDisconnectFunc func(id string)
 
+// Subscriber Manager keeps track of the connected client and its own topics for server to manage subscriptions
 type subscriberManager struct {
 	// a map keeps client ID and topics
 	subscribers    map[string]map[string]string
@@ -16,15 +17,18 @@ type subscriberManager struct {
 
 	cleanupThreshold int
 
-	onSubscribe   OnSubscribeH
-	onUnsubscribe OnUnsubscribeH
-	onConnect     OnConnectH
-	onDisconnect  OnDisconnectH
+	onSubscribe   OnSubscribeFunc
+	onUnsubscribe OnUnsubscribeFunc
+	onConnect     OnConnectFunc
+	onDisconnect  OnDisconnectFunc
 }
 
 func (s *subscriberManager) Connect(id string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
+
+	// TODO: handle duplicate client
+
 	// add the client ID to map
 	s.subscribers[id] = make(map[string]string)
 	if s.onConnect != nil {
@@ -46,7 +50,7 @@ func (s *subscriberManager) Disconnect(id string) {
 func (s *subscriberManager) Subscribe(id string, topicName string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
-	// add the topic to a crrosponding ID
+	// add the topic to the corresponding ID
 	s.subscribers[id][topicName] = topicName
 
 	if s.onSubscribe != nil {
@@ -57,7 +61,7 @@ func (s *subscriberManager) Subscribe(id string, topicName string) {
 func (s *subscriberManager) Unsubscribe(id string, topicName string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
-	// remove the topic from a crrosponding ID
+	// remove the topic from the corresponding ID
 	delete(s.subscribers[id], topicName)
 
 	if s.onUnsubscribe != nil {
@@ -89,12 +93,12 @@ func (s *subscriberManager) Size() int {
 	return count
 }
 
-// Returns topis of a subscriber
+// Returns topics of a subscriber
 func (s *subscriberManager) Topics(id string) map[string]string {
 	return s.subscribers[id]
 }
 
-func newSubscriberManager(onConnect OnConnectH, onDisconnect OnDisconnectH, onSubscribe OnSubscribeH, onUnsubscribe OnUnsubscribeH, cleanupThreshold int) *subscriberManager {
+func newSubscriberManager(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscribe OnSubscribeFunc, onUnsubscribe OnUnsubscribeFunc, cleanupThreshold int) *subscriberManager {
 	return &subscriberManager{
 		subscribers:      make(map[string]map[string]string),
 		onConnect:        onConnect,

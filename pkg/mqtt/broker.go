@@ -14,13 +14,13 @@ import (
 
 // Broker is a simple mqtt publisher abstraction.
 type Broker struct {
-	broker      *mqtt.Server
-	opts        *BrokerOptions
-	subMananger *subscriberManager
+	broker             *mqtt.Server
+	opts               *BrokerOptions
+	subscriberMananger *subscriberManager
 }
 
 // NewBroker creates a new broker.
-func NewBroker(onConnect OnConnectH, onDisconnect OnDisconnectH, onSubscribe OnSubscribeH, onUnsubscribe OnUnsubscribeH, brokerOpts *BrokerOptions) (*Broker, error) {
+func NewBroker(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscribe OnSubscribeFunc, onUnsubscribe OnUnsubscribeFunc, brokerOpts *BrokerOptions) (*Broker, error) {
 
 	if !brokerOpts.WebsocketEnabled && !brokerOpts.TCPEnabled {
 		return nil, errors.New("at least websocket or TCP must be enabled")
@@ -103,9 +103,9 @@ func NewBroker(onConnect OnConnectH, onDisconnect OnDisconnectH, onSubscribe OnS
 	}
 
 	return &Broker{
-		broker:      broker,
-		opts:        brokerOpts,
-		subMananger: s,
+		broker:             broker,
+		opts:               brokerOpts,
+		subscriberMananger: s,
 	}, nil
 }
 
@@ -125,11 +125,11 @@ func (b *Broker) SystemInfo() *system.Info {
 }
 
 func (b *Broker) HasSubscribers(topic string) bool {
-	return b.subMananger.hasTopic(topic)
+	return b.subscriberMananger.hasTopic(topic)
 }
 
 func (b *Broker) Topics(id string) map[string]string {
-	return b.subMananger.Topics(id)
+	return b.subscriberMananger.Topics(id)
 }
 
 // Send publishes a message.
@@ -139,5 +139,5 @@ func (b *Broker) Send(topic string, payload []byte) error {
 
 // TopicsManagerSize returns the size of the underlying map of the topics manager.
 func (b *Broker) TopicsManagerSize() int {
-	return b.subMananger.Size()
+	return b.subscriberMananger.Size()
 }
