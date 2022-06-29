@@ -27,8 +27,7 @@ func (s *subscriberManager) Connect(id string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
 
-	// TODO: handle duplicate client
-
+	// if the client ID is duplicated, kicks the old client and replease with the new one.
 	// add the client ID to map
 	s.subscribers[id] = make(map[string]string)
 	if s.onConnect != nil {
