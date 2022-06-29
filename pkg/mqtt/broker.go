@@ -84,7 +84,7 @@ func NewBroker(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscri
 		}
 	}
 
-	s := newSubscriberManager(onConnect, onDisconnect, onSubscribe, onUnsubscribe, brokerOpts.TopicCleanupThreshold)
+	s := NewSubscriberManager(onConnect, onDisconnect, onSubscribe, onUnsubscribe, brokerOpts.TopicCleanupThreshold)
 	// bind the broker events to the topic manager to track the subscriptions
 	broker.Events.OnSubscribe = func(filter string, cl events.Client, qos byte) {
 		s.Subscribe(cl.ID, filter)

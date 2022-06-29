@@ -50,6 +50,11 @@ func (s *subscriberManager) Disconnect(id string) {
 func (s *subscriberManager) Subscribe(id string, topicName string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
+
+	// check if the client has been connected
+	if _, has := s.subscribers[id]; has == false {
+		s.subscribers[id] = make(map[string]string)
+	}
 	// add the topic to the corresponding ID
 	s.subscribers[id][topicName] = topicName
 
@@ -61,6 +66,10 @@ func (s *subscriberManager) Subscribe(id string, topicName string) {
 func (s *subscriberManager) Unsubscribe(id string, topicName string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
+
+	if _, has := s.subscribers[id]; has == false {
+		return
+	}
 	// remove the topic from the corresponding ID
 	delete(s.subscribers[id], topicName)
 
@@ -98,7 +107,11 @@ func (s *subscriberManager) Topics(id string) map[string]string {
 	return s.subscribers[id]
 }
 
-func newSubscriberManager(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscribe OnSubscribeFunc, onUnsubscribe OnUnsubscribeFunc, cleanupThreshold int) *subscriberManager {
+func (s *subscriberManager) Subscribers() int {
+	return len(s.subscribers)
+}
+
+func NewSubscriberManager(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscribe OnSubscribeFunc, onUnsubscribe OnUnsubscribeFunc, cleanupThreshold int) *subscriberManager {
 	return &subscriberManager{
 		subscribers:      make(map[string]map[string]string),
 		onConnect:        onConnect,
