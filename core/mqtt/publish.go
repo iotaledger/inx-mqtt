@@ -134,6 +134,9 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	referenced := response.ReferencedByMilestoneIndex > 0
 
 	if referenced {
+		wfIndex := metadata.GetWhiteFlagIndex()
+		response.WhiteFlagIndex = &wfIndex
+
 		switch metadata.GetLedgerInclusionState() {
 		case inx.BlockMetadata_NO_TRANSACTION:
 			response.LedgerInclusionState = "noTransaction"

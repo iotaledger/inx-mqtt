@@ -36,6 +36,8 @@ type blockMetadataPayload struct {
 	ShouldPromote *bool `json:"shouldPromote,omitempty"`
 	// Whether the block should be reattached.
 	ShouldReattach *bool `json:"shouldReattach,omitempty"`
+	// If this block is referenced by a milestone this returns the index of that block inside the milestone by whiteflag ordering.
+	WhiteFlagIndex *uint32 `json:"whiteFlagIndex,omitempty"`
 }
 
 // outputMetadataPayload defines the metadata of an output
