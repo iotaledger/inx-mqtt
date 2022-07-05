@@ -124,34 +124,25 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	}
 
 	response := &blockMetadataPayload{
-		BlockID: blockID,
-		Parents: hexEncodedBlockIDsFromINXBlockIDs(metadata.GetParents()),
-		Solid:   metadata.GetSolid(),
+		BlockID:                    blockID,
+		Parents:                    hexEncodedBlockIDsFromINXBlockIDs(metadata.GetParents()),
+		Solid:                      metadata.GetSolid(),
+		ReferencedByMilestoneIndex: metadata.GetReferencedByMilestoneIndex(),
+		MilestoneIndex:             metadata.GetMilestoneIndex(),
 	}
 
-	referencedByIndex := metadata.GetReferencedByMilestoneIndex()
-
-	referenced := referencedByIndex > 0
+	referenced := response.ReferencedByMilestoneIndex > 0
 
 	if referenced {
-		response.ReferencedByMilestoneIndex = &referencedByIndex
-
-		var inclusionState string
 		switch metadata.GetLedgerInclusionState() {
 		case inx.BlockMetadata_NO_TRANSACTION:
-			inclusionState = "noTransaction"
+			response.LedgerInclusionState = "noTransaction"
 		case inx.BlockMetadata_CONFLICTING:
-			inclusionState = "conflicting"
+			response.LedgerInclusionState = "conflicting"
 			conflict := metadata.GetConflictReason()
 			response.ConflictReason = &conflict
 		case inx.BlockMetadata_INCLUDED:
-			inclusionState = "included"
-		}
-		response.LedgerInclusionState = &inclusionState
-
-		milestoneIndex := metadata.GetMilestoneIndex()
-		if milestoneIndex > 0 {
-			response.MilestoneIndex = &milestoneIndex
+			response.LedgerInclusionState = "included"
 		}
 	} else if metadata.GetSolid() {
 		shouldPromote := metadata.GetShouldPromote()
