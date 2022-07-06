@@ -95,7 +95,7 @@ func (s *subscriberManager) hasTopic(topicName string) bool {
 
 // recreates the subscribers map to release memory for the garbage collector
 func (s *subscriberManager) cleanupSubscriberWithoutLocking(clientID string) {
-	subscribers := make(map[string]map[string]string)
+	subscribers := make(map[string]map[string]string, len(s.subscribers))
 	for id, topics := range s.subscribers {
 		subscribers[id] = topics
 	}
@@ -104,7 +104,7 @@ func (s *subscriberManager) cleanupSubscriberWithoutLocking(clientID string) {
 
 // recreates the topics map to release memory for the garbage collector
 func (s *subscriberManager) cleanupTopicsWithoutLocking(subscriber map[string]string) {
-	tocpis := make(map[string]string)
+	tocpis := make(map[string]string, len(subscriber))
 	for k, v := range subscriber {
 		tocpis[k] = v
 	}
