@@ -12,7 +12,7 @@ type OnDisconnectFunc func(id string)
 // Subscriber Manager keeps track of the connected client and its own topics for server to manage subscriptions
 type subscriberManager struct {
 	// a map keeps client ID and topics
-	subscribers    map[string]map[string]string
+	subscribers    *ShrinkingMap[string, *ShrinkingMap[string, string]]
 	subscriberLock sync.RWMutex
 
 	cleanupThreshold int
@@ -23,59 +23,61 @@ type subscriberManager struct {
 	onDisconnect  OnDisconnectFunc
 }
 
-func (s *subscriberManager) Connect(id string) {
+func (s *subscriberManager) Connect(clientID string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
 
 	// if the client ID is duplicated, kicks the old client and replease with the new one.
 	// add the client ID to map
-	s.subscribers[id] = make(map[string]string)
+	s.subscribers.Set(clientID, New[string, string](s.cleanupThreshold))
+
 	if s.onConnect != nil {
-		s.onConnect(id)
+		s.onConnect(clientID)
 	}
 }
 
-func (s *subscriberManager) Disconnect(id string) {
+func (s *subscriberManager) Disconnect(clientID string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
 	// send disconnect notification then delete the subscriber
 	if s.onDisconnect != nil {
-		s.onDisconnect(id)
+		s.onDisconnect(clientID)
 	}
 	// remove the client ID from map
-	delete(s.subscribers, id)
-	s.cleanupSubscriberWithoutLocking(id)
+	s.subscribers.Delete(clientID)
 }
 
-func (s *subscriberManager) Subscribe(id string, topicName string) {
+func (s *subscriberManager) Subscribe(clientID string, topicName string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
 
 	// check if the client has been connected
-	if _, has := s.subscribers[id]; !has {
-		s.subscribers[id] = make(map[string]string)
+	if topics, has := s.subscribers.Get(clientID); !has {
+		t := New[string, string](s.cleanupThreshold)
+		t.Set(topicName, topicName)
+		s.subscribers.Set(clientID, t)
+	} else {
+		// add the topic to the corresponding ID
+		topics.Set(topicName, topicName)
 	}
-	// add the topic to the corresponding ID
-	s.subscribers[id][topicName] = topicName
 
 	if s.onSubscribe != nil {
-		s.onSubscribe(id, topicName)
+		s.onSubscribe(clientID, topicName)
 	}
 }
 
-func (s *subscriberManager) Unsubscribe(id string, topicName string) {
+func (s *subscriberManager) Unsubscribe(clientID string, topicName string) {
 	s.subscriberLock.Lock()
 	defer s.subscriberLock.Unlock()
 
-	if _, has := s.subscribers[id]; !has {
+	if topics, has := s.subscribers.Get(clientID); !has {
 		return
+	} else {
+		topics.Delete(topicName)
 	}
-	// remove the topic from the corresponding ID
-	delete(s.subscribers[id], topicName)
-	s.cleanupTopicsWithoutLocking(s.subscribers[id])
 
 	if s.onUnsubscribe != nil {
-		s.onUnsubscribe(id, topicName)
+		s.onUnsubscribe(clientID, topicName)
 	}
 }
 
@@ -83,56 +85,37 @@ func (s *subscriberManager) hasTopic(topicName string) bool {
 	s.subscriberLock.RLock()
 	defer s.subscriberLock.RUnlock()
 
-	// check if the topic exists in all subscribers
-	for _, topics := range s.subscribers {
-		_, has := topics[topicName]
-		if has {
+	for _, topics := range s.subscribers.m {
+		if _, has := topics.Get(topicName); has {
 			return true
 		}
 	}
 	return false
 }
 
-// recreates the subscribers map to release memory for the garbage collector
-func (s *subscriberManager) cleanupSubscriberWithoutLocking(clientID string) {
-	subscribers := make(map[string]map[string]string, len(s.subscribers))
-	for id, topics := range s.subscribers {
-		subscribers[id] = topics
-	}
-	s.subscribers = subscribers
-}
-
-// recreates the topics map to release memory for the garbage collector
-func (s *subscriberManager) cleanupTopicsWithoutLocking(subscriber map[string]string) {
-	tocpis := make(map[string]string, len(subscriber))
-	for k, v := range subscriber {
-		tocpis[k] = v
-	}
-	subscriber = tocpis
-}
-
 // Size returns the size of the underlying map of the topics manager.
 func (s *subscriberManager) Size() int {
 
 	count := 0
-	for _, topics := range s.subscribers {
-		count += len(topics)
+	for _, topics := range s.subscribers.m {
+		count += topics.Size()
 	}
 	return count
 }
 
 // Returns topics of a subscriber
-func (s *subscriberManager) Topics(id string) map[string]string {
-	return s.subscribers[id]
+func (s *subscriberManager) Topics(clientID string) map[string]string {
+	topics, _ := s.subscribers.Get(clientID)
+	return topics.m
 }
 
 func (s *subscriberManager) Subscribers() int {
-	return len(s.subscribers)
+	return s.subscribers.Size()
 }
 
 func NewSubscriberManager(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscribe OnSubscribeFunc, onUnsubscribe OnUnsubscribeFunc, cleanupThreshold int) *subscriberManager {
 	return &subscriberManager{
-		subscribers:      make(map[string]map[string]string),
+		subscribers:      New[string, *ShrinkingMap[string, string]](cleanupThreshold),
 		onConnect:        onConnect,
 		onDisconnect:     onDisconnect,
 		onSubscribe:      onSubscribe,
