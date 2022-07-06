@@ -25,17 +25,19 @@ type blockMetadataPayload struct {
 	// Whether the block is solid.
 	Solid bool `json:"isSolid"`
 	// The milestone index that references this block.
-	ReferencedByMilestoneIndex *uint32 `json:"referencedByMilestoneIndex,omitempty"`
+	ReferencedByMilestoneIndex uint32 `json:"referencedByMilestoneIndex,omitempty"`
 	// If this block represents a milestone this is the milestone index
-	MilestoneIndex *uint32 `json:"milestoneIndex,omitempty"`
+	MilestoneIndex uint32 `json:"milestoneIndex,omitempty"`
 	// The ledger inclusion state of the transaction payload.
-	LedgerInclusionState *string `json:"ledgerInclusionState,omitempty"`
+	LedgerInclusionState string `json:"ledgerInclusionState,omitempty"`
 	// The reason why this block is marked as conflicting.
 	ConflictReason *inx.BlockMetadata_ConflictReason `json:"conflictReason,omitempty"`
 	// Whether the block should be promoted.
 	ShouldPromote *bool `json:"shouldPromote,omitempty"`
 	// Whether the block should be reattached.
 	ShouldReattach *bool `json:"shouldReattach,omitempty"`
+	// If this block is referenced by a milestone this returns the index of that block inside the milestone by whiteflag ordering.
+	WhiteFlagIndex *uint32 `json:"whiteFlagIndex,omitempty"`
 }
 
 // outputMetadataPayload defines the metadata of an output
