@@ -44,6 +44,7 @@ func (s *subscriberManager) Disconnect(id string) {
 	}
 	// remove the client ID from map
 	delete(s.subscribers, id)
+	s.cleanupSubscriberWithoutLocking(id)
 }
 
 func (s *subscriberManager) Subscribe(id string, topicName string) {
@@ -71,6 +72,7 @@ func (s *subscriberManager) Unsubscribe(id string, topicName string) {
 	}
 	// remove the topic from the corresponding ID
 	delete(s.subscribers[id], topicName)
+	s.cleanupTopicsWithoutLocking(s.subscribers[id])
 
 	if s.onUnsubscribe != nil {
 		s.onUnsubscribe(id, topicName)
@@ -89,6 +91,24 @@ func (s *subscriberManager) hasTopic(topicName string) bool {
 		}
 	}
 	return false
+}
+
+// recreates the subscribers map to release memory for the garbage collector
+func (s *subscriberManager) cleanupSubscriberWithoutLocking(clientID string) {
+	subscribers := make(map[string]map[string]string)
+	for id, topics := range s.subscribers {
+		subscribers[id] = topics
+	}
+	s.subscribers = subscribers
+}
+
+// recreates the topics map to release memory for the garbage collector
+func (s *subscriberManager) cleanupTopicsWithoutLocking(subscriber map[string]string) {
+	tocpis := make(map[string]string)
+	for k, v := range subscriber {
+		tocpis[k] = v
+	}
+	subscriber = tocpis
 }
 
 // Size returns the size of the underlying map of the topics manager.
