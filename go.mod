@@ -9,7 +9,7 @@ require (
 	github.com/iotaledger/inx/go v0.0.0-20220705124918-775bb201b49e
 	github.com/iotaledger/iota.go/v3 v3.0.0-20220705124454-acc836567dfb
 	github.com/labstack/echo/v4 v4.7.2
-	github.com/mochi-co/mqtt v1.2.2
+	github.com/mochi-co/mqtt v1.2.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
 	go.uber.org/dig v1.14.1
