@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -67,18 +68,19 @@ func NewBroker(onClientConnect OnClientConnectFunc, onClientDisconnect OnClientD
 			tcpAuthController = &AuthAllowEveryone{}
 		}
 
-		var tls *listeners.TLS
+		var tlsConfig *tls.Config
 		if brokerOpts.TCPTLSEnabled {
 			var err error
-			tls, err = NewTLSSettings(brokerOpts.TCPTLSCertificatePath, brokerOpts.TCPTLSPrivateKeyPath)
+
+			tlsConfig, err = NewTLSConfig(brokerOpts.TCPTLSCertificatePath, brokerOpts.TCPTLSPrivateKeyPath)
 			if err != nil {
 				return nil, fmt.Errorf("enabling TCP TLS failed: %w", err)
 			}
 		}
 
 		if err := broker.AddListener(tcp, &listeners.Config{
-			Auth: tcpAuthController,
-			TLS:  tls,
+			Auth:      tcpAuthController,
+			TLSConfig: tlsConfig,
 		}); err != nil {
 			return nil, fmt.Errorf("adding TCP listener failed: %w", err)
 		}

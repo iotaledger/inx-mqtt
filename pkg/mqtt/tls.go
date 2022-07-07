@@ -4,11 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"os"
-
-	"github.com/mochi-co/mqtt/server/listeners"
 )
 
-func NewTLSSettings(tcpTlsCertificatePath string, tcpTlsPrivateKeyPath string) (*listeners.TLS, error) {
+func NewTLSConfig(tcpTlsCertificatePath string, tcpTlsPrivateKeyPath string) (*tls.Config, error) {
 
 	if _, err := os.Stat(tcpTlsCertificatePath); err != nil {
 		if os.IsNotExist(err) {
@@ -38,12 +36,12 @@ func NewTLSSettings(tcpTlsCertificatePath string, tcpTlsPrivateKeyPath string) (
 		return nil, fmt.Errorf("unable to read TCP TLS private key: %w", err)
 	}
 
-	if _, err := tls.X509KeyPair(tcpTlsCertificate, tcpTlsPrivateKey); err != nil {
+	cert, err := tls.X509KeyPair(tcpTlsCertificate, tcpTlsPrivateKey)
+	if err != nil {
 		return nil, fmt.Errorf("loading TCP TLS configuration failed: %w", err)
 	}
 
-	return &listeners.TLS{
-		Certificate: tcpTlsCertificate,
-		PrivateKey:  tcpTlsPrivateKey,
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
 	}, nil
 }
