@@ -7,25 +7,26 @@ import (
 )
 
 var (
-	mqttBrokerAppInfo             *prometheus.GaugeVec
-	mqttBrokerStarted             prometheus.Gauge
-	mqttBrokerUptime              prometheus.Gauge
-	mqttBrokerBytesRecv           prometheus.Gauge
-	mqttBrokerBytesSent           prometheus.Gauge
-	mqttBrokerClientsConnected    prometheus.Gauge
-	mqttBrokerClientsDisconnected prometheus.Gauge
-	mqttBrokerClientsMax          prometheus.Gauge
-	mqttBrokerClientsTotal        prometheus.Gauge
-	mqttBrokerConnectionsTotal    prometheus.Gauge
-	mqttBrokerMessagesRecv        prometheus.Gauge
-	mqttBrokerMessagesSent        prometheus.Gauge
-	mqttBrokerPublishDropped      prometheus.Gauge
-	mqttBrokerPublishRecv         prometheus.Gauge
-	mqttBrokerPublishSent         prometheus.Gauge
-	mqttBrokerRetained            prometheus.Gauge
-	mqttBrokerInflight            prometheus.Gauge
-	mqttBrokerSubscriptions       prometheus.Gauge
-	mqttBrokerTopicsManagerSize   prometheus.Gauge
+	mqttBrokerAppInfo                            *prometheus.GaugeVec
+	mqttBrokerStarted                            prometheus.Gauge
+	mqttBrokerUptime                             prometheus.Gauge
+	mqttBrokerBytesRecv                          prometheus.Gauge
+	mqttBrokerBytesSent                          prometheus.Gauge
+	mqttBrokerClientsConnected                   prometheus.Gauge
+	mqttBrokerClientsDisconnected                prometheus.Gauge
+	mqttBrokerClientsMax                         prometheus.Gauge
+	mqttBrokerClientsTotal                       prometheus.Gauge
+	mqttBrokerConnectionsTotal                   prometheus.Gauge
+	mqttBrokerMessagesRecv                       prometheus.Gauge
+	mqttBrokerMessagesSent                       prometheus.Gauge
+	mqttBrokerPublishDropped                     prometheus.Gauge
+	mqttBrokerPublishRecv                        prometheus.Gauge
+	mqttBrokerPublishSent                        prometheus.Gauge
+	mqttBrokerRetained                           prometheus.Gauge
+	mqttBrokerInflight                           prometheus.Gauge
+	mqttBrokerSubscriptions                      prometheus.Gauge
+	mqttBrokerSubscriptionManagerSubscribersSize prometheus.Gauge
+	mqttBrokerSubscriptionManagerTopicsSize      prometheus.Gauge
 )
 
 func registerNewMQTTBrokerGaugeVec(registry *prometheus.Registry, name string, labelNames []string, help string) *prometheus.GaugeVec {
@@ -71,7 +72,8 @@ func registerMQTTMetrics(registry *prometheus.Registry) {
 	mqttBrokerRetained = registerNewMQTTBrokerGauge(registry, "retained", "The number of messages currently retained.")
 	mqttBrokerInflight = registerNewMQTTBrokerGauge(registry, "inflight", "The number of messages currently in-flight.")
 	mqttBrokerSubscriptions = registerNewMQTTBrokerGauge(registry, "subscriptions", "The total number of filter subscriptions.")
-	mqttBrokerTopicsManagerSize = registerNewMQTTBrokerGauge(registry, "topics_manager_size", "The number of active topics in the topics manager.")
+	mqttBrokerSubscriptionManagerSubscribersSize = registerNewMQTTBrokerGauge(registry, "subscription_manager_subscribers_size", "The number of active subscribers in the subscription manager.")
+	mqttBrokerSubscriptionManagerTopicsSize = registerNewMQTTBrokerGauge(registry, "subscription_manager_topics_size", "The number of active topics in the subscription manager.")
 }
 
 func collectMQTTBroker(server *mqtt.Server) {
@@ -97,5 +99,6 @@ func collectMQTTBroker(server *mqtt.Server) {
 	mqttBrokerRetained.Set(float64(server.MQTTBroker.SystemInfo().Retained))
 	mqttBrokerInflight.Set(float64(server.MQTTBroker.SystemInfo().Inflight))
 	mqttBrokerSubscriptions.Set(float64(server.MQTTBroker.SystemInfo().Subscriptions))
-	mqttBrokerTopicsManagerSize.Set(float64(server.MQTTBroker.TopicsManagerSize()))
+	mqttBrokerSubscriptionManagerSubscribersSize.Set(float64(server.MQTTBroker.SubscribersSize()))
+	mqttBrokerSubscriptionManagerTopicsSize.Set(float64(server.MQTTBroker.TopicsSize()))
 }

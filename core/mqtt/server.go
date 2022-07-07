@@ -76,10 +76,10 @@ func (s *Server) Run(ctx context.Context) {
 			s.onClientConnect(clientID)
 		}, func(clientID string) {
 			s.onClientDisconnect(clientID)
-		}, func(clientID string, topicName string) {
-			s.onSubscribeTopic(ctx, clientID, topicName)
-		}, func(clientID string, topicName string) {
-			s.onUnsubscribeTopic(clientID, topicName)
+		}, func(clientID string, topic string) {
+			s.onSubscribeTopic(ctx, clientID, topic)
+		}, func(clientID string, topic string) {
+			s.onUnsubscribeTopic(clientID, topic)
 		},
 		s.brokerOptions)
 	if err != nil {
@@ -127,8 +127,16 @@ func (s *Server) Run(ctx context.Context) {
 	s.MQTTBroker.Stop()
 }
 
-func (s *Server) onSubscribeTopic(ctx context.Context, id string, topic string) {
-	s.LogDebugf("%s subscribed to %s", id, topic)
+func (s *Server) onClientConnect(clientID string) {
+	s.LogDebugf("onClientConnect %s", clientID)
+}
+
+func (s *Server) onClientDisconnect(clientID string) {
+	s.LogDebugf("onClientDisconnect %s", clientID)
+}
+
+func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic string) {
+	s.LogDebugf("%s subscribed to %s", clientID, topic)
 	switch topic {
 	case topicMilestoneInfoLatest:
 		go s.publishLatestMilestoneTopic()
@@ -170,8 +178,8 @@ func (s *Server) onSubscribeTopic(ctx context.Context, id string, topic string) 
 	}
 }
 
-func (s *Server) onUnsubscribeTopic(id string, topic string) {
-	s.LogDebugf("%s unsubscribed from %s", id, topic)
+func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
+	s.LogDebugf("%s unsubscribed from %s", clientID, topic)
 	switch topic {
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToBlocks)
@@ -193,19 +201,6 @@ func (s *Server) onUnsubscribeTopic(id string, topic string) {
 		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
 			s.stopListenIfNeeded(grpcListenToLedgerUpdates)
 		}
-	}
-}
-
-func (s *Server) onClientConnect(id string) {
-	// nothing to do at the moment
-	s.LogDebugf("onClientConnect %s", id)
-}
-
-func (s *Server) onClientDisconnect(id string) {
-	// unsubscribe topics of the client which it might lost connection accidentally
-	s.LogDebugf("onClientDisconnect %s", id)
-	for _, topic := range s.MQTTBroker.Topics(id) {
-		s.onUnsubscribeTopic(id, topic)
 	}
 }
 

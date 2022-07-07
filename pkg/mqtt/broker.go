@@ -14,13 +14,13 @@ import (
 
 // Broker is a simple mqtt publisher abstraction.
 type Broker struct {
-	broker            *mqtt.Server
-	opts              *BrokerOptions
-	subscriberManager *subscriberManager
+	broker              *mqtt.Server
+	opts                *BrokerOptions
+	subscriptionManager *SubscriptionManager
 }
 
 // NewBroker creates a new broker.
-func NewBroker(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscribe OnSubscribeFunc, onUnsubscribe OnUnsubscribeFunc, brokerOpts *BrokerOptions) (*Broker, error) {
+func NewBroker(onClientConnect OnClientConnectFunc, onClientDisconnect OnClientDisconnectFunc, onTopicSubscribe OnTopicSubscribeFunc, onTopicUnsubscribe OnTopicUnsubscribeFunc, brokerOpts *BrokerOptions) (*Broker, error) {
 
 	if !brokerOpts.WebsocketEnabled && !brokerOpts.TCPEnabled {
 		return nil, errors.New("at least websocket or TCP must be enabled")
@@ -84,16 +84,16 @@ func NewBroker(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscri
 		}
 	}
 
-	s := NewSubscriberManager(onConnect, onDisconnect, onSubscribe, onUnsubscribe, brokerOpts.TopicCleanupThreshold, 1.0)
-	// bind the broker events to the topic manager to track the subscriptions
-	broker.Events.OnSubscribe = func(filter string, cl events.Client, qos byte) {
-		s.Subscribe(cl.ID, filter)
-	}
+	s := NewSubscriptionManager(
+		onClientConnect,
+		onClientDisconnect,
+		onTopicSubscribe,
+		onTopicUnsubscribe,
+		brokerOpts.TopicCleanupThresholdCount,
+		brokerOpts.TopicCleanupThresholdRatio,
+	)
 
-	broker.Events.OnUnsubscribe = func(filter string, cl events.Client) {
-		s.Unsubscribe(cl.ID, filter)
-	}
-
+	// bind the broker events to the SubscriptionManager to track the subscriptions
 	broker.Events.OnConnect = func(cl events.Client, pk events.Packet) {
 		s.Connect(cl.ID)
 	}
@@ -102,10 +102,18 @@ func NewBroker(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscri
 		s.Disconnect(cl.ID)
 	}
 
+	broker.Events.OnSubscribe = func(topic string, cl events.Client, qos byte) {
+		s.Subscribe(cl.ID, topic)
+	}
+
+	broker.Events.OnUnsubscribe = func(topic string, cl events.Client) {
+		s.Unsubscribe(cl.ID, topic)
+	}
+
 	return &Broker{
-		broker:            broker,
-		opts:              brokerOpts,
-		subscriberManager: s,
+		broker:              broker,
+		opts:                brokerOpts,
+		subscriptionManager: s,
 	}, nil
 }
 
@@ -125,11 +133,7 @@ func (b *Broker) SystemInfo() *system.Info {
 }
 
 func (b *Broker) HasSubscribers(topic string) bool {
-	return b.subscriberManager.hasTopic(topic)
-}
-
-func (b *Broker) Topics(id string) map[string]string {
-	return b.subscriberManager.Topics(id)
+	return b.subscriptionManager.HasSubscribers(topic)
 }
 
 // Send publishes a message.
@@ -137,7 +141,12 @@ func (b *Broker) Send(topic string, payload []byte) error {
 	return b.broker.Publish(topic, payload, false)
 }
 
-// TopicsManagerSize returns the size of the underlying map of the topics manager.
-func (b *Broker) TopicsManagerSize() int {
-	return b.subscriberManager.Size()
+// SubscribersSize returns the size of the underlying map of the SubscriptionManager.
+func (b *Broker) SubscribersSize() int {
+	return b.subscriptionManager.SubscribersSize()
+}
+
+// TopicsSize returns the size of all underlying maps of the SubscriptionManager.
+func (b *Broker) TopicsSize() int {
+	return b.subscriptionManager.TopicsSize()
 }
