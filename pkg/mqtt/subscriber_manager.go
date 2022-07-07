@@ -15,7 +15,8 @@ type subscriberManager struct {
 	subscribers    *ShrinkingMap[string, *ShrinkingMap[string, string]]
 	subscriberLock sync.RWMutex
 
-	cleanupThreshold int
+	cleanupThresholdCount int
+	cleanupThresholdRatio float32
 
 	onSubscribe   OnSubscribeFunc
 	onUnsubscribe OnUnsubscribeFunc
@@ -29,7 +30,10 @@ func (s *subscriberManager) Connect(clientID string) {
 
 	// if the client ID is duplicated, kicks the old client and replease with the new one.
 	// add the client ID to map
-	s.subscribers.Set(clientID, New[string, string](s.cleanupThreshold))
+	s.subscribers.Set(clientID, New[string, string](
+		WithShrinkingThresholdRatio(s.cleanupThresholdRatio),
+		WithShrinkingThresholdCount(s.cleanupThresholdCount),
+	))
 
 	if s.onConnect != nil {
 		s.onConnect(clientID)
@@ -53,7 +57,10 @@ func (s *subscriberManager) Subscribe(clientID string, topicName string) {
 
 	// check if the client has been connected
 	if topics, has := s.subscribers.Get(clientID); !has {
-		t := New[string, string](s.cleanupThreshold)
+		t := New[string, string](
+			WithShrinkingThresholdRatio(s.cleanupThresholdRatio),
+			WithShrinkingThresholdCount(s.cleanupThresholdCount),
+		)
 		t.Set(topicName, topicName)
 		s.subscribers.Set(clientID, t)
 	} else {
@@ -113,13 +120,14 @@ func (s *subscriberManager) Subscribers() int {
 	return s.subscribers.Size()
 }
 
-func NewSubscriberManager(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscribe OnSubscribeFunc, onUnsubscribe OnUnsubscribeFunc, cleanupThreshold int) *subscriberManager {
+func NewSubscriberManager(onConnect OnConnectFunc, onDisconnect OnDisconnectFunc, onSubscribe OnSubscribeFunc, onUnsubscribe OnUnsubscribeFunc, cleanupThresholdCount int, cleanupThresholdRatio float32) *subscriberManager {
 	return &subscriberManager{
-		subscribers:      New[string, *ShrinkingMap[string, string]](cleanupThreshold),
-		onConnect:        onConnect,
-		onDisconnect:     onDisconnect,
-		onSubscribe:      onSubscribe,
-		onUnsubscribe:    onUnsubscribe,
-		cleanupThreshold: cleanupThreshold,
+		subscribers:           New[string, *ShrinkingMap[string, string]](WithShrinkingThresholdRatio(cleanupThresholdRatio), WithShrinkingThresholdCount(cleanupThresholdCount)),
+		onConnect:             onConnect,
+		onDisconnect:          onDisconnect,
+		onSubscribe:           onSubscribe,
+		onUnsubscribe:         onUnsubscribe,
+		cleanupThresholdCount: cleanupThresholdCount,
+		cleanupThresholdRatio: cleanupThresholdRatio,
 	}
 }
