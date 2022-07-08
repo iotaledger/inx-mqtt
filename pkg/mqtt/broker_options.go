@@ -6,9 +6,12 @@ type BrokerOptions struct {
 	BufferSize int
 	// BufferBlockSize is the size per client buffer R/W block in bytes.
 	BufferBlockSize int
-	// TopicCleanupThresholdCount the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
+
+	// MaxTopicSubscriptionsPerClient defines the maximum number of topic subscriptions per client before the client gets dropped (DOS protection).
+	MaxTopicSubscriptionsPerClient int
+	// TopicCleanupThresholdCount defines the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
 	TopicCleanupThresholdCount int
-	// TopicCleanupThresholdRatio the ratio of subscribed topics to deleted topics that trigger a garbage collection of the SubscriptionManager.
+	// TopicCleanupThresholdRatio defines the ratio of subscribed topics to deleted topics that trigger a garbage collection of the SubscriptionManager.
 	TopicCleanupThresholdRatio float32
 
 	// WebsocketEnabled defines whether to enable the websocket connection of the MQTT broker.
@@ -83,7 +86,14 @@ func WithBufferBlockSize(bufferBlockSize int) BrokerOption {
 	}
 }
 
-// WithTopicCleanupThreshold sets the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
+// WithMaxTopicSubscriptionsPerClient sets the maximum number of topic subscriptions per client before the client gets dropped (DOS protection).
+func WithMaxTopicSubscriptionsPerClient(maxTopicSubscriptionsPerClient int) BrokerOption {
+	return func(options *BrokerOptions) {
+		options.MaxTopicSubscriptionsPerClient = maxTopicSubscriptionsPerClient
+	}
+}
+
+// WithTopicCleanupThresholdCount sets the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
 func WithTopicCleanupThresholdCount(topicCleanupThresholdCount int) BrokerOption {
 	return func(options *BrokerOptions) {
 		options.TopicCleanupThresholdCount = topicCleanupThresholdCount

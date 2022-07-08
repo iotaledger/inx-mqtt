@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -8,6 +9,11 @@ type OnClientConnectFunc func(clientID string)
 type OnClientDisconnectFunc func(clientID string)
 type OnTopicSubscribeFunc func(clientID string, topic string)
 type OnTopicUnsubscribeFunc func(clientID string, topic string)
+type DropClientFunc func(clientID string, reason error)
+
+var (
+	ErrMaxTopicSubscriptionsPerClientReached = errors.New("maximum amount of topic subscriptions per client reached")
+)
 
 // SubscriptionManager keeps track of subscribed topics of clients of the
 // mqtt broker by subscribing to broker events.
@@ -19,13 +25,15 @@ type SubscriptionManager struct {
 	subscribers     *ShrinkingMap[string, *ShrinkingMap[string, int]]
 	subscribersLock sync.RWMutex
 
-	cleanupThresholdCount int
-	cleanupThresholdRatio float32
+	maxTopicSubscriptionsPerClient int
+	cleanupThresholdCount          int
+	cleanupThresholdRatio          float32
 
 	onClientConnect    OnClientConnectFunc
 	onClientDisconnect OnClientDisconnectFunc
 	onTopicSubscribe   OnTopicSubscribeFunc
 	onTopicUnsubscribe OnTopicUnsubscribeFunc
+	dropClient         DropClientFunc
 }
 
 func NewSubscriptionManager(
@@ -33,6 +41,8 @@ func NewSubscriptionManager(
 	onClientDisconnect OnClientDisconnectFunc,
 	onTopicSubscribe OnTopicSubscribeFunc,
 	onTopicUnsubscribe OnTopicUnsubscribeFunc,
+	dropClient DropClientFunc,
+	maxTopicSubscriptionsPerClient int,
 	cleanupThresholdCount int,
 	cleanupThresholdRatio float32) *SubscriptionManager {
 
@@ -41,12 +51,14 @@ func NewSubscriptionManager(
 			WithShrinkingThresholdRatio(cleanupThresholdRatio),
 			WithShrinkingThresholdCount(cleanupThresholdCount),
 		),
-		onClientConnect:       onClientConnect,
-		onClientDisconnect:    onClientDisconnect,
-		onTopicSubscribe:      onTopicSubscribe,
-		onTopicUnsubscribe:    onTopicUnsubscribe,
-		cleanupThresholdCount: cleanupThresholdCount,
-		cleanupThresholdRatio: cleanupThresholdRatio,
+		onClientConnect:                onClientConnect,
+		onClientDisconnect:             onClientDisconnect,
+		onTopicSubscribe:               onTopicSubscribe,
+		onTopicUnsubscribe:             onTopicUnsubscribe,
+		dropClient:                     dropClient,
+		maxTopicSubscriptionsPerClient: maxTopicSubscriptionsPerClient,
+		cleanupThresholdCount:          cleanupThresholdCount,
+		cleanupThresholdRatio:          cleanupThresholdRatio,
 	}
 }
 
@@ -95,7 +107,18 @@ func (s *SubscriptionManager) Subscribe(clientID string, topic string) {
 	if has {
 		subscribedTopics.Set(topic, count+1)
 	} else {
+		// add a new topic
 		subscribedTopics.Set(topic, 1)
+
+		// check if the client has reached the max number of subscriptions
+		if subscribedTopics.Size() >= s.maxTopicSubscriptionsPerClient {
+			// cleanup the client
+			s.cleanupClientWithoutLocking(clientID)
+			// drop the client
+			if s.dropClient != nil {
+				s.dropClient(clientID, ErrMaxTopicSubscriptionsPerClientReached)
+			}
+		}
 	}
 
 	if s.onTopicSubscribe != nil {

@@ -3,11 +3,16 @@ package mqtt
 import "github.com/iotaledger/hive.go/app"
 
 type ParametersMQTT struct {
-	BufferSize                 int     `default:"0" usage:"the size of the client buffers in bytes"`
-	BufferBlockSize            int     `default:"0" usage:"the size per client buffer R/W block in bytes"`
-	TopicCleanupThresholdCount int     `default:"10000" usage:"the number of deleted topics that trigger a garbage collection of the subscription manager"`
-	TopicCleanupThresholdRatio float32 `default:"1.0" usage:"the ratio of subscribed topics to deleted topics that trigger a garbage collection of the subscription manager"`
-	Websocket                  struct {
+	BufferSize      int `default:"0" usage:"the size of the client buffers in bytes"`
+	BufferBlockSize int `default:"0" usage:"the size per client buffer R/W block in bytes"`
+
+	Subscriptions struct {
+		MaxTopicSubscriptionsPerClient int     `default:"1000" usage:"the maximum number of topic subscriptions per client before the client gets dropped (DOS protection)"`
+		TopicsCleanupThresholdCount    int     `default:"10000" usage:"the number of deleted topics that trigger a garbage collection of the subscription manager"`
+		TopicsCleanupThresholdRatio    float32 `default:"1.0" usage:"the ratio of subscribed topics to deleted topics that trigger a garbage collection of the subscription manager"`
+	}
+
+	Websocket struct {
 		Enabled     bool   `default:"true" usage:"whether to enable the websocket connection of the MQTT broker"`
 		BindAddress string `default:"localhost:1888" usage:"the websocket bind address on which the MQTT broker listens on"`
 	}
