@@ -3,16 +3,16 @@ module github.com/iotaledger/inx-mqtt
 go 1.18
 
 require (
-	github.com/iotaledger/hive.go v0.0.0-20220531132324-8347a155e220
-	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220623193802-86a373581cc1
+	github.com/iotaledger/hive.go v0.0.0-20220707144500-ae0ecb7af9bf
+	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-20220707144500-ae0ecb7af9bf
 	github.com/iotaledger/inx-app v0.0.0-20220705125128-ee367df6181f
 	github.com/iotaledger/inx/go v0.0.0-20220705124918-775bb201b49e
 	github.com/iotaledger/iota.go/v3 v3.0.0-20220705124454-acc836567dfb
 	github.com/labstack/echo/v4 v4.7.2
-	github.com/mochi-co/mqtt v1.2.2
+	github.com/mochi-co/mqtt v1.2.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
-	github.com/stretchr/testify v1.7.4
+	github.com/stretchr/testify v1.8.0
 	go.uber.org/dig v1.14.1
 	google.golang.org/grpc v1.47.0
 )
@@ -36,7 +36,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
-	github.com/hashicorp/go-version v1.5.0 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/iotaledger/iota.go v1.0.0 // indirect
 	github.com/knadh/koanf v1.4.2 // indirect
 	github.com/labstack/gommon v0.3.1 // indirect
@@ -64,13 +64,13 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
-	golang.org/x/net v0.0.0-20220630215102-69896b714898 // indirect
+	golang.org/x/net v0.0.0-20220706163947-c90051bbdb60 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
-	google.golang.org/genproto v0.0.0-20220630174209-ad1d48641aa7 // indirect
+	google.golang.org/genproto v0.0.0-20220707150051-590a5ac7bee1 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

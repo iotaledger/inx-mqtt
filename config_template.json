@@ -13,7 +13,8 @@
   "mqtt": {
     "bufferSize": 0,
     "bufferBlockSize": 0,
-    "topicCleanupThreshold": 10000,
+    "topicCleanupThresholdCount": 10000,
+    "topicCleanupThresholdRatio": 1.0,
     "websocket": {
       "enabled": true,
       "bindAddress": "localhost:1888"
