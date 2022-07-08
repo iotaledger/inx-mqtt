@@ -6,8 +6,10 @@ type BrokerOptions struct {
 	BufferSize int
 	// BufferBlockSize is the size per client buffer R/W block in bytes.
 	BufferBlockSize int
-	// TopicCleanupThreshold the number of deleted topics that trigger a garbage collection of the topic manager.
-	TopicCleanupThreshold int
+	// TopicCleanupThresholdCount the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
+	TopicCleanupThresholdCount int
+	// TopicCleanupThresholdRatio the ratio of subscribed topics to deleted topics that trigger a garbage collection of the SubscriptionManager.
+	TopicCleanupThresholdRatio float32
 
 	// WebsocketEnabled defines whether to enable the websocket connection of the MQTT broker.
 	WebsocketEnabled bool
@@ -37,7 +39,8 @@ type BrokerOptions struct {
 var defaultBrokerOpts = []BrokerOption{
 	WithBufferSize(0),
 	WithBufferBlockSize(0),
-	WithTopicCleanupThreshold(10000),
+	WithTopicCleanupThresholdCount(10000),
+	WithTopicCleanupThresholdRatio(1.0),
 	WithWebsocketEnabled(true),
 	WithWebsocketBindAddress("localhost:1888"),
 	WithTCPEnabled(false),
@@ -80,10 +83,17 @@ func WithBufferBlockSize(bufferBlockSize int) BrokerOption {
 	}
 }
 
-// WithTopicCleanupThreshold sets the number of deleted topics that trigger a garbage collection of the topic manager.
-func WithTopicCleanupThreshold(topicCleanupThreshold int) BrokerOption {
+// WithTopicCleanupThreshold sets the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
+func WithTopicCleanupThresholdCount(topicCleanupThresholdCount int) BrokerOption {
 	return func(options *BrokerOptions) {
-		options.TopicCleanupThreshold = topicCleanupThreshold
+		options.TopicCleanupThresholdCount = topicCleanupThresholdCount
+	}
+}
+
+// WithTopicCleanupThresholdRatio the ratio of subscribed topics to deleted topics that trigger a garbage collection of the SubscriptionManager.
+func WithTopicCleanupThresholdRatio(topicCleanupThresholdRatio float32) BrokerOption {
+	return func(options *BrokerOptions) {
+		options.TopicCleanupThresholdRatio = topicCleanupThresholdRatio
 	}
 }
 

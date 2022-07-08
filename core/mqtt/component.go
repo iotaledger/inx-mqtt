@@ -2,6 +2,7 @@ package mqtt
 
 import (
 	"context"
+
 	"go.uber.org/dig"
 
 	"github.com/iotaledger/hive.go/app"
@@ -53,7 +54,8 @@ func provide(c *dig.Container) error {
 			deps.ShutdownHandler,
 			mqtt.WithBufferSize(ParamsMQTT.BufferSize),
 			mqtt.WithBufferBlockSize(ParamsMQTT.BufferBlockSize),
-			mqtt.WithTopicCleanupThreshold(ParamsMQTT.TopicCleanupThreshold),
+			mqtt.WithTopicCleanupThresholdCount(ParamsMQTT.TopicCleanupThresholdCount),
+			mqtt.WithTopicCleanupThresholdRatio(ParamsMQTT.TopicCleanupThresholdRatio),
 			mqtt.WithWebsocketEnabled(ParamsMQTT.Websocket.Enabled),
 			mqtt.WithWebsocketBindAddress(ParamsMQTT.Websocket.BindAddress),
 			mqtt.WithTCPEnabled(ParamsMQTT.TCP.Enabled),

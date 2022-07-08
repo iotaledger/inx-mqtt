@@ -351,9 +351,9 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 	s.PublishOnUnlockConditionTopics(topicSpentOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
 }
 
-func blockIDFromBlockMetadataTopic(topicName string) iotago.BlockID {
-	if strings.HasPrefix(topicName, "block-metadata/") && !strings.HasSuffix(topicName, "/referenced") {
-		blockIDHex := strings.Replace(topicName, "block-metadata/", "", 1)
+func blockIDFromBlockMetadataTopic(topic string) iotago.BlockID {
+	if strings.HasPrefix(topic, "block-metadata/") && !strings.HasSuffix(topic, "/referenced") {
+		blockIDHex := strings.Replace(topic, "block-metadata/", "", 1)
 		blockID, err := iotago.BlockIDFromHexString(blockIDHex)
 		if err != nil {
 			return iotago.EmptyBlockID()
@@ -363,9 +363,9 @@ func blockIDFromBlockMetadataTopic(topicName string) iotago.BlockID {
 	return iotago.EmptyBlockID()
 }
 
-func transactionIDFromTransactionsIncludedBlockTopic(topicName string) iotago.TransactionID {
-	if strings.HasPrefix(topicName, "transactions/") && strings.HasSuffix(topicName, "/included-block") {
-		transactionIDHex := strings.Replace(topicName, "transactions/", "", 1)
+func transactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.TransactionID {
+	if strings.HasPrefix(topic, "transactions/") && strings.HasSuffix(topic, "/included-block") {
+		transactionIDHex := strings.Replace(topic, "transactions/", "", 1)
 		transactionIDHex = strings.Replace(transactionIDHex, "/included-block", "", 1)
 
 		decoded, err := iotago.DecodeHex(transactionIDHex)
@@ -379,9 +379,9 @@ func transactionIDFromTransactionsIncludedBlockTopic(topicName string) iotago.Tr
 	return emptyTransactionID
 }
 
-func outputIDFromOutputsTopic(topicName string) iotago.OutputID {
-	if strings.HasPrefix(topicName, "outputs/") && !strings.HasPrefix(topicName, "outputs/unlock") {
-		outputIDHex := strings.Replace(topicName, "outputs/", "", 1)
+func outputIDFromOutputsTopic(topic string) iotago.OutputID {
+	if strings.HasPrefix(topic, "outputs/") && !strings.HasPrefix(topic, "outputs/unlock") {
+		outputIDHex := strings.Replace(topic, "outputs/", "", 1)
 		outputID, err := iotago.OutputIDFromHex(outputIDHex)
 		if err != nil {
 			return emptyOutputID
