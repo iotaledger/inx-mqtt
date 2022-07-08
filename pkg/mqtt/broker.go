@@ -86,11 +86,27 @@ func NewBroker(onClientConnect OnClientConnectFunc, onClientDisconnect OnClientD
 		}
 	}
 
+	// this function is used to drop malicious clients
+	dropClient := func(clientID string, reason error) {
+		client, exists := broker.Clients.Get(clientID)
+		if !exists {
+			return
+		}
+
+		// stop the client connection
+		client.Stop(reason)
+
+		// delete the client from the broker
+		broker.Clients.Delete(clientID)
+	}
+
 	s := NewSubscriptionManager(
 		onClientConnect,
 		onClientDisconnect,
 		onTopicSubscribe,
 		onTopicUnsubscribe,
+		dropClient,
+		brokerOpts.MaxTopicSubscriptionsPerClient,
 		brokerOpts.TopicCleanupThresholdCount,
 		brokerOpts.TopicCleanupThresholdRatio,
 	)
