@@ -39,6 +39,10 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 }
 
 func (s *Server) PublishMilestoneOnTopic(topic string, ms *nodebridge.Milestone) {
+	if ms == nil || ms.Milestone == nil {
+		return
+	}
+
 	s.PublishOnTopicIfSubscribed(topic, &milestoneInfoPayload{
 		Index:       ms.Milestone.Index,
 		Time:        ms.Milestone.Timestamp,
