@@ -14,7 +14,7 @@ var (
 	Name = "inx-mqtt"
 
 	// Version of the app.
-	Version = "0.10.1"
+	Version = "0.11.0"
 )
 
 func App() *app.App {
