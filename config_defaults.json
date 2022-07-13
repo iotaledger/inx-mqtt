@@ -1,10 +1,6 @@
 {
   "app": {
     "checkForUpdates": true,
-    "disablePlugins": [],
-    "enablePlugins": [
-      "Prometheus"
-    ],
     "stopGracePeriod": "5m"
   },
   "inx": {
@@ -28,9 +24,7 @@
       "auth": {
         "enabled": false,
         "passwordSalt": "0000000000000000000000000000000000000000000000000000000000000000",
-        "users": {
-          "admin": "0000000000000000000000000000000000000000000000000000000000000000"
-        }
+        "users": null
       },
       "tls": {
         "enabled": false,
@@ -40,9 +34,11 @@
     }
   },
   "profiling": {
+    "enabled": false,
     "bindAddress": "localhost:6060"
   },
   "prometheus": {
+    "enabled": false,
     "bindAddress": "localhost:9312",
     "mqttMetrics": true,
     "goMetrics": false,
