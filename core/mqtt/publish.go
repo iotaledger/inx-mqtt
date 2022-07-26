@@ -142,13 +142,13 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 		response.WhiteFlagIndex = &wfIndex
 
 		switch metadata.GetLedgerInclusionState() {
-		case inx.BlockMetadata_NO_TRANSACTION:
+		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_NO_TRANSACTION:
 			response.LedgerInclusionState = "noTransaction"
-		case inx.BlockMetadata_CONFLICTING:
+		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_CONFLICTING:
 			response.LedgerInclusionState = "conflicting"
 			conflict := metadata.GetConflictReason()
 			response.ConflictReason = &conflict
-		case inx.BlockMetadata_INCLUDED:
+		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_INCLUDED:
 			response.LedgerInclusionState = "included"
 		}
 	} else if metadata.GetSolid() {
