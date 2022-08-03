@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
 	github.com/stretchr/testify v1.8.0
-	go.uber.org/dig v1.14.1
+	go.uber.org/dig v1.15.0
 	google.golang.org/grpc v1.48.0
 )
 
