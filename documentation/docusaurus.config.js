@@ -9,7 +9,7 @@ module.exports = {
                 path: path.resolve(__dirname, 'docs'),
                 routeBasePath: 'inx-mqtt',
                 sidebarPath: path.resolve(__dirname, 'sidebars.js'),
-                editUrl: 'https://github.com/gohornet/inx-mqtt/edit/develop/documentation',
+                editUrl: 'https://github.com/gohornet/inx-mqtt/edit/develop/documentation/docs',
                 versions: {
                     current: {
                         label: 'Develop',
