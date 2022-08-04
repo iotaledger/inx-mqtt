@@ -361,8 +361,10 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	var latestIndex iotago.MilestoneIndex
 	for {
-		ledgerUpdate, err := stream.Recv()
+		payload, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
@@ -372,14 +374,15 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 		if c.Err() != nil {
 			break
 		}
-		index := ledgerUpdate.GetMilestoneIndex()
-		created := ledgerUpdate.GetCreated()
-		consumed := ledgerUpdate.GetConsumed()
-		for _, o := range created {
-			s.PublishOutput(index, o)
-		}
-		for _, o := range consumed {
-			s.PublishSpent(index, o)
+		switch op := payload.GetOp().(type) {
+		case *inx.LedgerUpdate_BatchMarker:
+			if op.BatchMarker.GetMarkerType() == inx.LedgerUpdate_Marker_BEGIN {
+				latestIndex = op.BatchMarker.GetMilestoneIndex()
+			}
+		case *inx.LedgerUpdate_Consumed:
+			s.PublishSpent(latestIndex, op.Consumed)
+		case *inx.LedgerUpdate_Created:
+			s.PublishOutput(latestIndex, op.Created)
 		}
 	}
 	return nil
