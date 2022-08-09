@@ -5,8 +5,8 @@ import (
 
 	"go.uber.org/dig"
 
-	"github.com/iotaledger/hive.go/app"
-	"github.com/iotaledger/hive.go/app/core/shutdown"
+	"github.com/iotaledger/hive.go/core/app"
+	"github.com/iotaledger/hive.go/core/app/core/shutdown"
 	"github.com/iotaledger/inx-app/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/daemon"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
