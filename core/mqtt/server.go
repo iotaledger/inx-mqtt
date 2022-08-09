@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/iotaledger/hive.go/app/core/shutdown"
-	"github.com/iotaledger/hive.go/events"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/core/app/core/shutdown"
+	"github.com/iotaledger/hive.go/core/events"
+	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/inx-app/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
 	inx "github.com/iotaledger/inx/go"
@@ -109,8 +109,8 @@ func (s *Server) Run(ctx context.Context) {
 		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, ms)
 	})
 
-	s.NodeBridge.Events.LatestMilestoneChanged.Attach(onLatestMilestone)
-	s.NodeBridge.Events.ConfirmedMilestoneChanged.Attach(onConfirmedMilestone)
+	s.NodeBridge.Events.LatestMilestoneChanged.Hook(onLatestMilestone)
+	s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(onConfirmedMilestone)
 
 	<-ctx.Done()
 

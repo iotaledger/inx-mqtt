@@ -1,6 +1,6 @@
 package mqtt
 
-import "github.com/iotaledger/hive.go/app"
+import "github.com/iotaledger/hive.go/core/app"
 
 type ParametersMQTT struct {
 	BufferSize      int `default:"0" usage:"the size of the client buffers in bytes"`
