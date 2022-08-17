@@ -162,8 +162,10 @@ func (s *SubscriptionManager) HasSubscribers(topic string) bool {
 		count, has := topics.Get(topic)
 		if has && count > 0 {
 			hasSubscribers = true
+
 			return false
 		}
+
 		return true
 	})
 
@@ -188,6 +190,7 @@ func (s *SubscriptionManager) TopicsSize() int {
 	// loop over all clients
 	s.subscribers.ForEach(func(clientID string, topics *ShrinkingMap[string, int]) bool {
 		count += topics.Size()
+
 		return true
 	})
 
@@ -214,6 +217,7 @@ func (s *SubscriptionManager) cleanupClientWithoutLocking(clientID string) {
 
 		// delete the topic
 		subscribedTopics.Delete(topic)
+
 		return true
 	})
 

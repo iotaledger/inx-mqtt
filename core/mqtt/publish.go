@@ -98,6 +98,7 @@ func (s *Server) PublishBlock(blk *inx.RawBlock) {
 
 func (s *Server) hasSubscriberForTransactionIncludedBlock(transactionID iotago.TransactionID) bool {
 	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedBlock, parameterTransactionID, transactionID.ToHex())
+
 	return s.MQTTBroker.HasSubscribers(transactionTopic)
 }
 
@@ -112,6 +113,7 @@ func hexEncodedBlockIDsFromINXBlockIDs(s []*inx.BlockId) []string {
 		blockID := blkID.Unwrap()
 		results[i] = iotago.EncodeHex(blockID[:])
 	}
+
 	return results
 }
 
@@ -206,6 +208,7 @@ func payloadForSpent(ledgerIndex uint32, spent *inx.LedgerSpent, iotaOutput iota
 		payload.Metadata.TransactionIDSpent = spent.UnwrapTransactionIDSpent().ToHex()
 		payload.Metadata.MilestoneTimestampSpent = spent.GetMilestoneTimestampSpent()
 	}
+
 	return payload
 }
 
@@ -213,6 +216,7 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 
 	topicFunc := func(condition unlockCondition, addressString string) string {
 		topic := strings.ReplaceAll(baseTopic, parameterCondition, string(condition))
+
 		return strings.ReplaceAll(topic, parameterAddress, addressString)
 	}
 
@@ -315,6 +319,7 @@ func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 		if payload == nil {
 			payload = payloadForOutput(ledgerIndex, output, iotaOutput)
 		}
+
 		return payload
 	}
 
@@ -346,6 +351,7 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 		if payload == nil {
 			payload = payloadForSpent(ledgerIndex, spent, iotaOutput)
 		}
+
 		return payload
 	}
 
@@ -362,8 +368,10 @@ func blockIDFromBlockMetadataTopic(topic string) iotago.BlockID {
 		if err != nil {
 			return iotago.EmptyBlockID()
 		}
+
 		return blockID
 	}
+
 	return iotago.EmptyBlockID()
 }
 
@@ -378,8 +386,10 @@ func transactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.Transa
 		}
 		transactionID := iotago.TransactionID{}
 		copy(transactionID[:], decoded)
+
 		return transactionID
 	}
+
 	return emptyTransactionID
 }
 
@@ -390,7 +400,9 @@ func outputIDFromOutputsTopic(topic string) iotago.OutputID {
 		if err != nil {
 			return emptyOutputID
 		}
+
 		return outputID
 	}
+
 	return emptyOutputID
 }

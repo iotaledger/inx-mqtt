@@ -231,6 +231,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 		// subscription already exists
 		// => increase count to track subscribers
 		sub.Count++
+
 		return
 	}
 
@@ -275,6 +276,7 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -282,6 +284,7 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 		}
 		s.PublishBlock(block.GetBlock())
 	}
+
 	return nil
 }
 
@@ -298,6 +301,7 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -305,6 +309,7 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 		}
 		s.PublishBlockMetadata(blockMetadata)
 	}
+
 	return nil
 }
 
@@ -321,6 +326,7 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -328,6 +334,7 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 		}
 		s.PublishBlockMetadata(blockMetadata)
 	}
+
 	return nil
 }
 
@@ -344,6 +351,7 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -351,6 +359,7 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 		}
 		s.PublishBlockMetadata(blockMetadata)
 	}
+
 	return nil
 }
 
@@ -369,6 +378,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -385,6 +395,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 			s.PublishOutput(latestIndex, op.Created)
 		}
 	}
+
 	return nil
 }
 
@@ -401,6 +412,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 			if err == io.EOF || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -408,6 +420,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 		}
 		s.PublishReceipt(receipt)
 	}
+
 	return nil
 }
 

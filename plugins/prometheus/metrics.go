@@ -38,6 +38,7 @@ func registerNewMQTTBrokerGaugeVec(registry *prometheus.Registry, name string, l
 			Help:      help,
 		}, labelNames)
 	registry.MustRegister(gaugeVec)
+
 	return gaugeVec
 }
 
@@ -50,6 +51,7 @@ func registerNewMQTTBrokerGauge(registry *prometheus.Registry, name string, help
 			Help:      help,
 		})
 	registry.MustRegister(gauge)
+
 	return gauge
 }
 
