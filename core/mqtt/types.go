@@ -6,7 +6,7 @@ import (
 	inx "github.com/iotaledger/inx/go"
 )
 
-// milestoneInfoPayload defines the payload of the milestone latest and confirmed topics
+// milestoneInfoPayload defines the payload of the milestone latest and confirmed topics.
 type milestoneInfoPayload struct {
 	// The index of the milestone.
 	Index uint32 `json:"index"`
@@ -16,7 +16,7 @@ type milestoneInfoPayload struct {
 	MilestoneID string `json:"milestoneId"`
 }
 
-// blockMetadataPayload defines the payload of the block metadata topic
+// blockMetadataPayload defines the payload of the block metadata topic.
 type blockMetadataPayload struct {
 	// The hex encoded block ID of the block.
 	BlockID string `json:"blockId"`
@@ -40,7 +40,7 @@ type blockMetadataPayload struct {
 	WhiteFlagIndex *uint32 `json:"whiteFlagIndex,omitempty"`
 }
 
-// outputMetadataPayload defines the metadata of an output
+// outputMetadataPayload defines the metadata of an output.
 type outputMetadataPayload struct {
 	// The hex encoded block ID of the block.
 	BlockID string `json:"blockId"`
@@ -64,7 +64,7 @@ type outputMetadataPayload struct {
 	LedgerIndex uint32 `json:"ledgerIndex"`
 }
 
-// outputPayload defines the payload of the output topics
+// outputPayload defines the payload of the output topics.
 type outputPayload struct {
 	// The metadata of the output.
 	Metadata *outputMetadataPayload `json:"metadata"`

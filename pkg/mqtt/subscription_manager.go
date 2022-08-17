@@ -197,7 +197,7 @@ func (s *SubscriptionManager) TopicsSize() int {
 	return count
 }
 
-// cleanupClientWithoutLocking removes all subscriptions and the client itself
+// cleanupClientWithoutLocking removes all subscriptions and the client itself.
 func (s *SubscriptionManager) cleanupClientWithoutLocking(clientID string) {
 
 	// check if the client exists
