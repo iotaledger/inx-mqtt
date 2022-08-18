@@ -124,7 +124,9 @@ func (s *Server) Run(ctx context.Context) {
 		}
 	}
 
-	s.MQTTBroker.Stop()
+	if err := s.MQTTBroker.Stop(); err != nil {
+		s.LogErrorf("failed to stop MQTT broker: %s", err.Error())
+	}
 }
 
 func (s *Server) onClientConnect(clientID string) {

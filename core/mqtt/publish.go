@@ -11,9 +11,15 @@ import (
 	iotago "github.com/iotaledger/iota.go/v3"
 )
 
+func (s *Server) sendMessageOnTopic(topic string, payload []byte) {
+	if err := s.MQTTBroker.Send(topic, payload); err != nil {
+		s.LogWarnf("Failed to send message on topic %s: %s", topic, err)
+	}
+}
+
 func (s *Server) PublishRawOnTopicIfSubscribed(topic string, payload []byte) {
 	if s.MQTTBroker.HasSubscribers(topic) {
-		s.MQTTBroker.Send(topic, payload)
+		s.sendMessageOnTopic(topic, payload)
 	}
 }
 
@@ -35,7 +41,7 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 		return
 	}
 
-	s.MQTTBroker.Send(topic, jsonPayload)
+	s.sendMessageOnTopic(topic, jsonPayload)
 }
 
 func (s *Server) PublishMilestoneOnTopic(topic string, ms *nodebridge.Milestone) {
@@ -167,13 +173,13 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	}
 
 	if hasSingleBlockTopicSubscriber {
-		s.MQTTBroker.Send(singleBlockTopic, jsonPayload)
+		s.sendMessageOnTopic(singleBlockTopic, jsonPayload)
 	}
 	if referenced && hasAllBlocksTopicSubscriber {
-		s.MQTTBroker.Send(topicBlockMetadataReferenced, jsonPayload)
+		s.sendMessageOnTopic(topicBlockMetadataReferenced, jsonPayload)
 	}
 	if hasTipScoreUpdatesSubscriber {
-		s.MQTTBroker.Send(topicTipScoreUpdates, jsonPayload)
+		s.sendMessageOnTopic(topicTipScoreUpdates, jsonPayload)
 	}
 }
 
