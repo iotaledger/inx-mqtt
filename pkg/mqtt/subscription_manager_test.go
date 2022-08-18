@@ -1,3 +1,4 @@
+//nolint:golint,revive,stylecheck // we don't care about these linters in test cases
 package mqtt_test
 
 import (
