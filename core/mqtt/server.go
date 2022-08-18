@@ -270,10 +270,12 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 func (s *Server) listenToBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		block, err := stream.Recv()
 		if err != nil {
@@ -289,16 +291,19 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 		s.PublishBlock(block.GetBlock())
 	}
 
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
@@ -314,16 +319,19 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 		s.PublishBlockMetadata(blockMetadata)
 	}
 
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
@@ -339,16 +347,19 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 		s.PublishBlockMetadata(blockMetadata)
 	}
 
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
@@ -364,12 +375,14 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 		s.PublishBlockMetadata(blockMetadata)
 	}
 
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(c, &inx.MilestoneRangeRequest{})
 	if err != nil {
 		return err
@@ -400,16 +413,19 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 		}
 	}
 
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToMigrationReceipts(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		receipt, err := stream.Recv()
 		if err != nil {
@@ -425,6 +441,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 		s.PublishReceipt(receipt)
 	}
 
+	//nolint:nilerr // false positive
 	return nil
 }
 
@@ -475,6 +492,7 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 }
 
 func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Context, transactionID iotago.TransactionID, blockID iotago.BlockID) {
+	s.LogDebugf("fetchAndPublishTransactionInclusionWithBlock: %s", transactionID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadBlock(ctx, inx.NewBlockId(blockID))
 	if err != nil {
 		return
