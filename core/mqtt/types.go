@@ -46,10 +46,6 @@ type outputMetadataPayload struct {
 	BlockID string `json:"blockId"`
 	// The hex encoded transaction id from which this output originated.
 	TransactionID string `json:"transactionId"`
-	// The index of the output.
-	OutputIndex uint16 `json:"outputIndex"`
-	// Whether this output is spent.
-	Spent bool `json:"isSpent"`
 	// The milestone index at which this output was spent.
 	MilestoneIndexSpent uint32 `json:"milestoneIndexSpent,omitempty"`
 	// The milestone timestamp this output was spent.
@@ -62,6 +58,10 @@ type outputMetadataPayload struct {
 	MilestoneTimestampBooked uint32 `json:"milestoneTimestampBooked"`
 	// The ledger index at which this output was available at.
 	LedgerIndex uint32 `json:"ledgerIndex"`
+	// The index of the output.
+	OutputIndex uint16 `json:"outputIndex"`
+	// Whether this output is spent.
+	Spent bool `json:"isSpent"`
 }
 
 // outputPayload defines the payload of the output topics.
