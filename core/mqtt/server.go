@@ -404,12 +404,18 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 			break
 		}
 		switch op := payload.GetOp().(type) {
+
+		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_BatchMarker:
 			if op.BatchMarker.GetMarkerType() == inx.LedgerUpdate_Marker_BEGIN {
 				latestIndex = op.BatchMarker.GetMilestoneIndex()
 			}
+
+		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Consumed:
 			s.PublishSpent(latestIndex, op.Consumed)
+
+		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Created:
 			s.PublishOutput(latestIndex, op.Created)
 		}

@@ -151,12 +151,18 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 		response.WhiteFlagIndex = &wfIndex
 
 		switch metadata.GetLedgerInclusionState() {
+
+		//nolint:nosnakecase // grpc uses underscores
 		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_NO_TRANSACTION:
 			response.LedgerInclusionState = "noTransaction"
+
+		//nolint:nosnakecase // grpc uses underscores
 		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_CONFLICTING:
 			response.LedgerInclusionState = "conflicting"
 			conflict := metadata.GetConflictReason()
 			response.ConflictReason = &conflict
+
+		//nolint:nosnakecase // grpc uses underscores
 		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_INCLUDED:
 			response.LedgerInclusionState = "included"
 		}

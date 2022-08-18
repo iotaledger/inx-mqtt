@@ -31,6 +31,7 @@ type blockMetadataPayload struct {
 	// The ledger inclusion state of the transaction payload.
 	LedgerInclusionState string `json:"ledgerInclusionState,omitempty"`
 	// The reason why this block is marked as conflicting.
+	//nolint:nosnakecase // grpc uses underscores
 	ConflictReason *inx.BlockMetadata_ConflictReason `json:"conflictReason,omitempty"`
 	// Whether the block should be promoted.
 	ShouldPromote *bool `json:"shouldPromote,omitempty"`
