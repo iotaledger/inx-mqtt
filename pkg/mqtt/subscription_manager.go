@@ -3,6 +3,8 @@ package mqtt
 import (
 	"errors"
 	"sync"
+
+	"github.com/iotaledger/hive.go/core/generics/shrinkingmap"
 )
 
 type OnClientConnectFunc func(clientID string)
@@ -22,7 +24,7 @@ var (
 type SubscriptionManager struct {
 	// subscribers keeps track of the clients and their
 	// subscribed topics (and the count of subscriptions per topic).
-	subscribers     *ShrinkingMap[string, *ShrinkingMap[string, int]]
+	subscribers     *shrinkingmap.ShrinkingMap[string, *shrinkingmap.ShrinkingMap[string, int]]
 	subscribersLock sync.RWMutex
 
 	maxTopicSubscriptionsPerClient int
@@ -47,9 +49,9 @@ func NewSubscriptionManager(
 	cleanupThresholdRatio float32) *SubscriptionManager {
 
 	return &SubscriptionManager{
-		subscribers: New[string, *ShrinkingMap[string, int]](
-			WithShrinkingThresholdRatio(cleanupThresholdRatio),
-			WithShrinkingThresholdCount(cleanupThresholdCount),
+		subscribers: shrinkingmap.New[string, *shrinkingmap.ShrinkingMap[string, int]](
+			shrinkingmap.WithShrinkingThresholdRatio(cleanupThresholdRatio),
+			shrinkingmap.WithShrinkingThresholdCount(cleanupThresholdCount),
 		),
 		onClientConnect:                onClientConnect,
 		onClientDisconnect:             onClientDisconnect,
@@ -70,9 +72,9 @@ func (s *SubscriptionManager) Connect(clientID string) {
 	s.cleanupClientWithoutLocking(clientID)
 
 	// create a new map for the client
-	s.subscribers.Set(clientID, New[string, int](
-		WithShrinkingThresholdRatio(s.cleanupThresholdRatio),
-		WithShrinkingThresholdCount(s.cleanupThresholdCount),
+	s.subscribers.Set(clientID, shrinkingmap.New[string, int](
+		shrinkingmap.WithShrinkingThresholdRatio(s.cleanupThresholdRatio),
+		shrinkingmap.WithShrinkingThresholdCount(s.cleanupThresholdCount),
 	))
 
 	if s.onClientConnect != nil {
@@ -158,7 +160,7 @@ func (s *SubscriptionManager) HasSubscribers(topic string) bool {
 	hasSubscribers := false
 
 	// loop over all clients
-	s.subscribers.ForEach(func(clientID string, topics *ShrinkingMap[string, int]) bool {
+	s.subscribers.ForEach(func(clientID string, topics *shrinkingmap.ShrinkingMap[string, int]) bool {
 		count, has := topics.Get(topic)
 		if has && count > 0 {
 			hasSubscribers = true
@@ -188,7 +190,7 @@ func (s *SubscriptionManager) TopicsSize() int {
 	count := 0
 
 	// loop over all clients
-	s.subscribers.ForEach(func(clientID string, topics *ShrinkingMap[string, int]) bool {
+	s.subscribers.ForEach(func(clientID string, topics *shrinkingmap.ShrinkingMap[string, int]) bool {
 		count += topics.Size()
 
 		return true
