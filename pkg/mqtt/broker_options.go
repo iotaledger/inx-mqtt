@@ -157,22 +157,22 @@ func WithTCPAuthUsers(tcpAuthUsers map[string]string) BrokerOption {
 }
 
 // WithTCPTLSEnabled sets whether to enable TLS for TCP connections.
-func WithTCPTLSEnabled(tcpTlsEnabled bool) BrokerOption {
+func WithTCPTLSEnabled(tcpTLSEnabled bool) BrokerOption {
 	return func(options *BrokerOptions) {
-		options.TCPTLSEnabled = tcpTlsEnabled
+		options.TCPTLSEnabled = tcpTLSEnabled
 	}
 }
 
 // WithTCPTLSCertificatePath sets the path to the certificate file (x509 PEM) for TCP connections with TLS.
-func WithTCPTLSCertificatePath(tcpTlsCertificatePath string) BrokerOption {
+func WithTCPTLSCertificatePath(tcpTLSCertificatePath string) BrokerOption {
 	return func(options *BrokerOptions) {
-		options.TCPTLSCertificatePath = tcpTlsCertificatePath
+		options.TCPTLSCertificatePath = tcpTLSCertificatePath
 	}
 }
 
 // WithTCPTLSPrivateKeyPath sets the path to the private key file (x509 PEM) for TCP connections with TLS.
-func WithTCPTLSPrivateKeyPath(tcpTlsPrivateKeyPath string) BrokerOption {
+func WithTCPTLSPrivateKeyPath(tcpTLSPrivateKeyPath string) BrokerOption {
 	return func(options *BrokerOptions) {
-		options.TCPTLSPrivateKeyPath = tcpTlsPrivateKeyPath
+		options.TCPTLSPrivateKeyPath = tcpTLSPrivateKeyPath
 	}
 }
