@@ -238,6 +238,8 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 	}
 
 	c, cancel := context.WithCancel(ctx)
+
+	//nolint:gosec // we do not care about weak random numbers here
 	subscriptionIdentifier := rand.Int()
 	s.grpcSubscriptions[grpcCall] = &topicSubcription{
 		Count:      1,
