@@ -6,7 +6,7 @@ import (
 	inx "github.com/iotaledger/inx/go"
 )
 
-// milestoneInfoPayload defines the payload of the milestone latest and confirmed topics
+// milestoneInfoPayload defines the payload of the milestone latest and confirmed topics.
 type milestoneInfoPayload struct {
 	// The index of the milestone.
 	Index uint32 `json:"index"`
@@ -16,7 +16,7 @@ type milestoneInfoPayload struct {
 	MilestoneID string `json:"milestoneId"`
 }
 
-// blockMetadataPayload defines the payload of the block metadata topic
+// blockMetadataPayload defines the payload of the block metadata topic.
 type blockMetadataPayload struct {
 	// The hex encoded block ID of the block.
 	BlockID string `json:"blockId"`
@@ -31,6 +31,7 @@ type blockMetadataPayload struct {
 	// The ledger inclusion state of the transaction payload.
 	LedgerInclusionState string `json:"ledgerInclusionState,omitempty"`
 	// The reason why this block is marked as conflicting.
+	//nolint:nosnakecase // grpc uses underscores
 	ConflictReason *inx.BlockMetadata_ConflictReason `json:"conflictReason,omitempty"`
 	// Whether the block should be promoted.
 	ShouldPromote *bool `json:"shouldPromote,omitempty"`
@@ -40,16 +41,12 @@ type blockMetadataPayload struct {
 	WhiteFlagIndex *uint32 `json:"whiteFlagIndex,omitempty"`
 }
 
-// outputMetadataPayload defines the metadata of an output
+// outputMetadataPayload defines the metadata of an output.
 type outputMetadataPayload struct {
 	// The hex encoded block ID of the block.
 	BlockID string `json:"blockId"`
 	// The hex encoded transaction id from which this output originated.
 	TransactionID string `json:"transactionId"`
-	// The index of the output.
-	OutputIndex uint16 `json:"outputIndex"`
-	// Whether this output is spent.
-	Spent bool `json:"isSpent"`
 	// The milestone index at which this output was spent.
 	MilestoneIndexSpent uint32 `json:"milestoneIndexSpent,omitempty"`
 	// The milestone timestamp this output was spent.
@@ -62,9 +59,13 @@ type outputMetadataPayload struct {
 	MilestoneTimestampBooked uint32 `json:"milestoneTimestampBooked"`
 	// The ledger index at which this output was available at.
 	LedgerIndex uint32 `json:"ledgerIndex"`
+	// The index of the output.
+	OutputIndex uint16 `json:"outputIndex"`
+	// Whether this output is spent.
+	Spent bool `json:"isSpent"`
 }
 
-// outputPayload defines the payload of the output topics
+// outputPayload defines the payload of the output topics.
 type outputPayload struct {
 	// The metadata of the output.
 	Metadata *outputMetadataPayload `json:"metadata"`

@@ -124,7 +124,9 @@ func (s *Server) Run(ctx context.Context) {
 		}
 	}
 
-	s.MQTTBroker.Stop()
+	if err := s.MQTTBroker.Stop(); err != nil {
+		s.LogErrorf("failed to stop MQTT broker: %s", err.Error())
+	}
 }
 
 func (s *Server) onClientConnect(clientID string) {
@@ -154,7 +156,8 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 		s.startListenIfNeeded(ctx, grpcListenToMigrationReceipts, s.listenToMigrationReceipts)
 
 	default:
-		if strings.HasPrefix(topic, "block-metadata/") {
+		switch {
+		case strings.HasPrefix(topic, "block-metadata/"):
 			s.startListenIfNeeded(ctx, grpcListenToSolidBlocks, s.listenToSolidBlocks)
 			s.startListenIfNeeded(ctx, grpcListenToReferencedBlocks, s.listenToReferencedBlocks)
 
@@ -162,10 +165,10 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 				go s.fetchAndPublishBlockMetadata(ctx, blockID)
 			}
 
-		} else if strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data") {
+		case strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data"):
 			s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
-		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
 			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
 			if transactionID := transactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != emptyTransactionID {
@@ -191,14 +194,15 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 		s.stopListenIfNeeded(grpcListenToMigrationReceipts)
 
 	default:
-		if strings.HasPrefix(topic, "block-metadata/") {
+		switch {
+		case strings.HasPrefix(topic, "block-metadata/"):
 			s.stopListenIfNeeded(grpcListenToSolidBlocks)
 			s.stopListenIfNeeded(grpcListenToReferencedBlocks)
 
-		} else if strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data") {
+		case strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data"):
 			s.stopListenIfNeeded(grpcListenToBlocks)
 
-		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
 			s.stopListenIfNeeded(grpcListenToLedgerUpdates)
 		}
 	}
@@ -231,10 +235,13 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 		// subscription already exists
 		// => increase count to track subscribers
 		sub.Count++
+
 		return
 	}
 
 	c, cancel := context.WithCancel(ctx)
+
+	//nolint:gosec // we do not care about weak random numbers here
 	subscriptionIdentifier := rand.Int()
 	s.grpcSubscriptions[grpcCall] = &topicSubcription{
 		Count:      1,
@@ -265,16 +272,19 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 func (s *Server) listenToBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		block, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -282,22 +292,27 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 		}
 		s.PublishBlock(block.GetBlock())
 	}
+
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -305,22 +320,27 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 		}
 		s.PublishBlockMetadata(blockMetadata)
 	}
+
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -328,22 +348,27 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 		}
 		s.PublishBlockMetadata(blockMetadata)
 	}
+
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -351,12 +376,15 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 		}
 		s.PublishBlockMetadata(blockMetadata)
 	}
+
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(c, &inx.MilestoneRangeRequest{})
 	if err != nil {
 		return err
@@ -366,41 +394,53 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	for {
 		payload, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
 			break
 		}
 		switch op := payload.GetOp().(type) {
+
+		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_BatchMarker:
 			if op.BatchMarker.GetMarkerType() == inx.LedgerUpdate_Marker_BEGIN {
 				latestIndex = op.BatchMarker.GetMilestoneIndex()
 			}
+
+		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Consumed:
 			s.PublishSpent(latestIndex, op.Consumed)
+
+		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Created:
 			s.PublishOutput(latestIndex, op.Created)
 		}
 	}
+
+	//nolint:nilerr // false positive
 	return nil
 }
 
 func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 	c, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	stream, err := s.NodeBridge.Client().ListenToMigrationReceipts(c, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
+
 	for {
 		receipt, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
+
 			return err
 		}
 		if c.Err() != nil {
@@ -408,6 +448,8 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 		}
 		s.PublishReceipt(receipt)
 	}
+
+	//nolint:nilerr // false positive
 	return nil
 }
 
@@ -458,6 +500,7 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 }
 
 func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Context, transactionID iotago.TransactionID, blockID iotago.BlockID) {
+	s.LogDebugf("fetchAndPublishTransactionInclusionWithBlock: %s", transactionID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadBlock(ctx, inx.NewBlockId(blockID))
 	if err != nil {
 		return

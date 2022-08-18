@@ -1,6 +1,6 @@
 package mqtt
 
-// Topic names
+// Topic names.
 const (
 	parameterBlockID       = "{blockId}"
 	parameterTransactionID = "{transactionId}"

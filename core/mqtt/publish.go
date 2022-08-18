@@ -11,9 +11,15 @@ import (
 	iotago "github.com/iotaledger/iota.go/v3"
 )
 
+func (s *Server) sendMessageOnTopic(topic string, payload []byte) {
+	if err := s.MQTTBroker.Send(topic, payload); err != nil {
+		s.LogWarnf("Failed to send message on topic %s: %s", topic, err)
+	}
+}
+
 func (s *Server) PublishRawOnTopicIfSubscribed(topic string, payload []byte) {
 	if s.MQTTBroker.HasSubscribers(topic) {
-		s.MQTTBroker.Send(topic, payload)
+		s.sendMessageOnTopic(topic, payload)
 	}
 }
 
@@ -35,7 +41,7 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 		return
 	}
 
-	s.MQTTBroker.Send(topic, jsonPayload)
+	s.sendMessageOnTopic(topic, jsonPayload)
 }
 
 func (s *Server) PublishMilestoneOnTopic(topic string, ms *nodebridge.Milestone) {
@@ -71,6 +77,7 @@ func (s *Server) PublishBlock(blk *inx.RawBlock) {
 	case *iotago.Transaction:
 		s.PublishRawOnTopicIfSubscribed(topicBlocksTransaction, blk.GetData())
 
+		//nolint:gocritic // the type switch is nicer here
 		switch p := payload.Essence.Payload.(type) {
 		case *iotago.TaggedData:
 			s.PublishRawOnTopicIfSubscribed(topicBlocksTransactionTaggedData, blk.GetData())
@@ -98,6 +105,7 @@ func (s *Server) PublishBlock(blk *inx.RawBlock) {
 
 func (s *Server) hasSubscriberForTransactionIncludedBlock(transactionID iotago.TransactionID) bool {
 	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedBlock, parameterTransactionID, transactionID.ToHex())
+
 	return s.MQTTBroker.HasSubscribers(transactionTopic)
 }
 
@@ -112,6 +120,7 @@ func hexEncodedBlockIDsFromINXBlockIDs(s []*inx.BlockId) []string {
 		blockID := blkID.Unwrap()
 		results[i] = iotago.EncodeHex(blockID[:])
 	}
+
 	return results
 }
 
@@ -142,12 +151,18 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 		response.WhiteFlagIndex = &wfIndex
 
 		switch metadata.GetLedgerInclusionState() {
+
+		//nolint:nosnakecase // grpc uses underscores
 		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_NO_TRANSACTION:
 			response.LedgerInclusionState = "noTransaction"
+
+		//nolint:nosnakecase // grpc uses underscores
 		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_CONFLICTING:
 			response.LedgerInclusionState = "conflicting"
 			conflict := metadata.GetConflictReason()
 			response.ConflictReason = &conflict
+
+		//nolint:nosnakecase // grpc uses underscores
 		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_INCLUDED:
 			response.LedgerInclusionState = "included"
 		}
@@ -165,13 +180,13 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	}
 
 	if hasSingleBlockTopicSubscriber {
-		s.MQTTBroker.Send(singleBlockTopic, jsonPayload)
+		s.sendMessageOnTopic(singleBlockTopic, jsonPayload)
 	}
 	if referenced && hasAllBlocksTopicSubscriber {
-		s.MQTTBroker.Send(topicBlockMetadataReferenced, jsonPayload)
+		s.sendMessageOnTopic(topicBlockMetadataReferenced, jsonPayload)
 	}
 	if hasTipScoreUpdatesSubscriber {
-		s.MQTTBroker.Send(topicTipScoreUpdates, jsonPayload)
+		s.sendMessageOnTopic(topicTipScoreUpdates, jsonPayload)
 	}
 }
 
@@ -206,6 +221,7 @@ func payloadForSpent(ledgerIndex uint32, spent *inx.LedgerSpent, iotaOutput iota
 		payload.Metadata.TransactionIDSpent = spent.UnwrapTransactionIDSpent().ToHex()
 		payload.Metadata.MilestoneTimestampSpent = spent.GetMilestoneTimestampSpent()
 	}
+
 	return payload
 }
 
@@ -213,6 +229,7 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 
 	topicFunc := func(condition unlockCondition, addressString string) string {
 		topic := strings.ReplaceAll(baseTopic, parameterCondition, string(condition))
+
 		return strings.ReplaceAll(topic, parameterAddress, addressString)
 	}
 
@@ -315,6 +332,7 @@ func (s *Server) PublishOutput(ledgerIndex uint32, output *inx.LedgerOutput) {
 		if payload == nil {
 			payload = payloadForOutput(ledgerIndex, output, iotaOutput)
 		}
+
 		return payload
 	}
 
@@ -346,6 +364,7 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 		if payload == nil {
 			payload = payloadForSpent(ledgerIndex, spent, iotaOutput)
 		}
+
 		return payload
 	}
 
@@ -362,8 +381,10 @@ func blockIDFromBlockMetadataTopic(topic string) iotago.BlockID {
 		if err != nil {
 			return iotago.EmptyBlockID()
 		}
+
 		return blockID
 	}
+
 	return iotago.EmptyBlockID()
 }
 
@@ -378,8 +399,10 @@ func transactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.Transa
 		}
 		transactionID := iotago.TransactionID{}
 		copy(transactionID[:], decoded)
+
 		return transactionID
 	}
+
 	return emptyTransactionID
 }
 
@@ -390,7 +413,9 @@ func outputIDFromOutputsTopic(topic string) iotago.OutputID {
 		if err != nil {
 			return emptyOutputID
 		}
+
 		return outputID
 	}
+
 	return emptyOutputID
 }
