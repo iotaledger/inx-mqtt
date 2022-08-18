@@ -156,7 +156,8 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 		s.startListenIfNeeded(ctx, grpcListenToMigrationReceipts, s.listenToMigrationReceipts)
 
 	default:
-		if strings.HasPrefix(topic, "block-metadata/") {
+		switch {
+		case strings.HasPrefix(topic, "block-metadata/"):
 			s.startListenIfNeeded(ctx, grpcListenToSolidBlocks, s.listenToSolidBlocks)
 			s.startListenIfNeeded(ctx, grpcListenToReferencedBlocks, s.listenToReferencedBlocks)
 
@@ -164,10 +165,10 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 				go s.fetchAndPublishBlockMetadata(ctx, blockID)
 			}
 
-		} else if strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data") {
+		case strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data"):
 			s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
-		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
 			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
 			if transactionID := transactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != emptyTransactionID {
@@ -193,14 +194,15 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 		s.stopListenIfNeeded(grpcListenToMigrationReceipts)
 
 	default:
-		if strings.HasPrefix(topic, "block-metadata/") {
+		switch {
+		case strings.HasPrefix(topic, "block-metadata/"):
 			s.stopListenIfNeeded(grpcListenToSolidBlocks)
 			s.stopListenIfNeeded(grpcListenToReferencedBlocks)
 
-		} else if strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data") {
+		case strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data"):
 			s.stopListenIfNeeded(grpcListenToBlocks)
 
-		} else if strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") {
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
 			s.stopListenIfNeeded(grpcListenToLedgerUpdates)
 		}
 	}

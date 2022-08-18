@@ -77,6 +77,7 @@ func (s *Server) PublishBlock(blk *inx.RawBlock) {
 	case *iotago.Transaction:
 		s.PublishRawOnTopicIfSubscribed(topicBlocksTransaction, blk.GetData())
 
+		//nolint:gocritic // the type switch is nicer here
 		switch p := payload.Essence.Payload.(type) {
 		case *iotago.TaggedData:
 			s.PublishRawOnTopicIfSubscribed(topicBlocksTransactionTaggedData, blk.GetData())
