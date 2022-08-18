@@ -42,6 +42,7 @@ func NewTLSConfig(tcpTLSCertificatePath string, tcpTLSPrivateKeyPath string) (*t
 	}
 
 	return &tls.Config{
+		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{cert},
 	}, nil
 }
