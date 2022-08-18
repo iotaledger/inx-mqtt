@@ -279,7 +279,7 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 	for {
 		block, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
 
@@ -307,7 +307,7 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
 
@@ -335,7 +335,7 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
 
@@ -363,7 +363,7 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 	for {
 		blockMetadata, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
 
@@ -392,7 +392,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	for {
 		payload, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
 
@@ -429,7 +429,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 	for {
 		receipt, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF || status.Code(err) == codes.Canceled {
+			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
 				break
 			}
 
