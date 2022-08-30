@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -27,6 +28,10 @@ const (
 	grpcListenToLedgerUpdates     = "INX.ListenToLedgerUpdates"
 	grpcListenToMigrationReceipts = "INX.ListenToMigrationReceipts"
 	grpcListenToTipScoreUpdates   = "INX.ListenToTipScoreUpdates"
+)
+
+const (
+	fetchTimeout = 5 * time.Second
 )
 
 var (
@@ -83,22 +88,24 @@ func (s *Server) Run(ctx context.Context) {
 		},
 		s.brokerOptions)
 	if err != nil {
-		panic(err)
+		s.LogErrorfAndExit("failed to create MQTT broker: %s", err.Error())
 	}
 
 	s.MQTTBroker = broker
 
-	go func() {
-		if err := broker.Start(); err != nil {
-			panic(err)
-		}
-	}()
+	if err := broker.Start(); err != nil {
+		s.LogErrorfAndExit("failed to start MQTT broker: %s", err.Error())
+	}
 
 	if s.brokerOptions.WebsocketEnabled {
-		s.LogInfo("Registering API route...")
-		if err := deps.NodeBridge.RegisterAPIRoute(APIRoute, s.brokerOptions.WebsocketBindAddress); err != nil {
-			s.LogErrorf("failed to register API route via INX: %s", err.Error())
+		ctxRegister, cancelRegister := context.WithTimeout(ctx, 5*time.Second)
+
+		s.LogInfo("Registering API route ...")
+		if err := deps.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, s.brokerOptions.WebsocketBindAddress); err != nil {
+			s.LogErrorfAndExit("failed to register API route via INX: %s", err.Error())
 		}
+		s.LogInfo("Registering API route ... done")
+		cancelRegister()
 	}
 
 	onLatestMilestone := events.NewClosure(func(ms *nodebridge.Milestone) {
@@ -112,16 +119,22 @@ func (s *Server) Run(ctx context.Context) {
 	s.NodeBridge.Events.LatestMilestoneChanged.Hook(onLatestMilestone)
 	s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(onConfirmedMilestone)
 
+	s.LogInfo("Starting MQTT Broker ... done")
 	<-ctx.Done()
 
 	s.NodeBridge.Events.LatestMilestoneChanged.Detach(onLatestMilestone)
 	s.NodeBridge.Events.ConfirmedMilestoneChanged.Detach(onConfirmedMilestone)
 
 	if s.brokerOptions.WebsocketEnabled {
-		s.LogInfo("Removing API route...")
-		if err := deps.NodeBridge.UnregisterAPIRoute(APIRoute); err != nil {
+		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelUnregister()
+
+		s.LogInfo("Removing API route ...")
+		//nolint:contextcheck // false positive
+		if err := deps.NodeBridge.UnregisterAPIRoute(ctxUnregister, APIRoute); err != nil {
 			s.LogErrorf("failed to remove API route via INX: %s", err.Error())
 		}
+		cancelUnregister()
 	}
 
 	if err := s.MQTTBroker.Stop(); err != nil {
@@ -239,7 +252,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 		return
 	}
 
-	c, cancel := context.WithCancel(ctx)
+	ctxCancel, cancel := context.WithCancel(ctx)
 
 	//nolint:gosec // we do not care about weak random numbers here
 	subscriptionIdentifier := rand.Int()
@@ -250,7 +263,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 	}
 	go func() {
 		s.LogInfof("Listen to %s", grpcCall)
-		err := listenFunc(c)
+		err := listenFunc(ctxCancel)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			s.LogErrorf("Finished listen to %s with error: %s", grpcCall, err.Error())
 			if status.Code(err) == codes.Unavailable {
@@ -270,10 +283,8 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 }
 
 func (s *Server) listenToBlocks(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToBlocks(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -287,7 +298,7 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishBlock(block.GetBlock())
@@ -298,10 +309,8 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToSolidBlocks(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -315,7 +324,7 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishBlockMetadata(blockMetadata)
@@ -326,10 +335,8 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -343,7 +350,7 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishBlockMetadata(blockMetadata)
@@ -354,10 +361,8 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -371,7 +376,7 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishBlockMetadata(blockMetadata)
@@ -382,10 +387,8 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 }
 
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(c, &inx.MilestoneRangeRequest{})
+	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(ctx, &inx.MilestoneRangeRequest{})
 	if err != nil {
 		return err
 	}
@@ -400,7 +403,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		switch op := payload.GetOp().(type) {
@@ -417,7 +420,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 
 		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Created:
-			s.PublishOutput(latestIndex, op.Created)
+			s.PublishOutput(ctx, latestIndex, op.Created)
 		}
 	}
 
@@ -426,10 +429,8 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 }
 
 func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToMigrationReceipts(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToMigrationReceipts(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -443,7 +444,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishReceipt(receipt)
@@ -484,7 +485,7 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 	if err != nil {
 		return
 	}
-	s.PublishOutput(resp.GetLedgerIndex(), resp.GetOutput())
+	s.PublishOutput(ctx, resp.GetLedgerIndex(), resp.GetOutput())
 }
 
 func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID iotago.TransactionID) {
@@ -496,7 +497,11 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 	if err != nil {
 		return
 	}
-	s.fetchAndPublishTransactionInclusionWithBlock(ctx, transactionID, resp.GetOutput().UnwrapBlockID())
+
+	ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
+	defer cancelFetch()
+
+	s.fetchAndPublishTransactionInclusionWithBlock(ctxFetch, transactionID, resp.GetOutput().UnwrapBlockID())
 }
 
 func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Context, transactionID iotago.TransactionID, blockID iotago.BlockID) {
