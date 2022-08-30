@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -27,6 +28,10 @@ const (
 	grpcListenToLedgerUpdates     = "INX.ListenToLedgerUpdates"
 	grpcListenToMigrationReceipts = "INX.ListenToMigrationReceipts"
 	grpcListenToTipScoreUpdates   = "INX.ListenToTipScoreUpdates"
+)
+
+const (
+	fetchTimeout = 5 * time.Second
 )
 
 var (
@@ -90,15 +95,18 @@ func (s *Server) Run(ctx context.Context) {
 
 	go func() {
 		if err := broker.Start(); err != nil {
-			panic(err)
+			s.LogErrorfAndExit("failed to start MQTT broker: %s", err.Error())
 		}
 	}()
 
 	if s.brokerOptions.WebsocketEnabled {
+		ctxRegister, cancelRegister := context.WithTimeout(ctx, 5*time.Second)
+
 		s.LogInfo("Registering API route...")
-		if err := deps.NodeBridge.RegisterAPIRoute(APIRoute, s.brokerOptions.WebsocketBindAddress); err != nil {
-			s.LogErrorf("failed to register API route via INX: %s", err.Error())
+		if err := deps.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, s.brokerOptions.WebsocketBindAddress); err != nil {
+			s.LogErrorfAndExit("failed to register API route via INX: %s", err.Error())
 		}
+		cancelRegister()
 	}
 
 	onLatestMilestone := events.NewClosure(func(ms *nodebridge.Milestone) {
@@ -118,10 +126,15 @@ func (s *Server) Run(ctx context.Context) {
 	s.NodeBridge.Events.ConfirmedMilestoneChanged.Detach(onConfirmedMilestone)
 
 	if s.brokerOptions.WebsocketEnabled {
+		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelUnregister()
+
 		s.LogInfo("Removing API route...")
-		if err := deps.NodeBridge.UnregisterAPIRoute(APIRoute); err != nil {
+		//nolint:contextcheck // false positive
+		if err := deps.NodeBridge.UnregisterAPIRoute(ctxUnregister, APIRoute); err != nil {
 			s.LogErrorf("failed to remove API route via INX: %s", err.Error())
 		}
+		cancelUnregister()
 	}
 
 	if err := s.MQTTBroker.Stop(); err != nil {
@@ -417,7 +430,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 
 		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Created:
-			s.PublishOutput(latestIndex, op.Created)
+			s.PublishOutput(ctx, latestIndex, op.Created)
 		}
 	}
 
@@ -484,7 +497,7 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 	if err != nil {
 		return
 	}
-	s.PublishOutput(resp.GetLedgerIndex(), resp.GetOutput())
+	s.PublishOutput(ctx, resp.GetLedgerIndex(), resp.GetOutput())
 }
 
 func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID iotago.TransactionID) {
@@ -496,7 +509,11 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 	if err != nil {
 		return
 	}
-	s.fetchAndPublishTransactionInclusionWithBlock(ctx, transactionID, resp.GetOutput().UnwrapBlockID())
+
+	ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
+	defer cancelFetch()
+
+	s.fetchAndPublishTransactionInclusionWithBlock(ctxFetch, transactionID, resp.GetOutput().UnwrapBlockID())
 }
 
 func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Context, transactionID iotago.TransactionID, blockID iotago.BlockID) {
