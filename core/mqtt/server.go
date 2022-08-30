@@ -251,7 +251,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 		return
 	}
 
-	c, cancel := context.WithCancel(ctx)
+	ctxCancel, cancel := context.WithCancel(ctx)
 
 	//nolint:gosec // we do not care about weak random numbers here
 	subscriptionIdentifier := rand.Int()
@@ -262,7 +262,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 	}
 	go func() {
 		s.LogInfof("Listen to %s", grpcCall)
-		err := listenFunc(c)
+		err := listenFunc(ctxCancel)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			s.LogErrorf("Finished listen to %s with error: %s", grpcCall, err.Error())
 			if status.Code(err) == codes.Unavailable {
@@ -282,10 +282,8 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 }
 
 func (s *Server) listenToBlocks(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToBlocks(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -299,7 +297,7 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishBlock(block.GetBlock())
@@ -310,10 +308,8 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToSolidBlocks(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -327,7 +323,7 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishBlockMetadata(blockMetadata)
@@ -338,10 +334,8 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -355,7 +349,7 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishBlockMetadata(blockMetadata)
@@ -366,10 +360,8 @@ func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -383,7 +375,7 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishBlockMetadata(blockMetadata)
@@ -394,10 +386,8 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 }
 
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(c, &inx.MilestoneRangeRequest{})
+	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(ctx, &inx.MilestoneRangeRequest{})
 	if err != nil {
 		return err
 	}
@@ -412,7 +402,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		switch op := payload.GetOp().(type) {
@@ -438,10 +428,8 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 }
 
 func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
-	c, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	stream, err := s.NodeBridge.Client().ListenToMigrationReceipts(c, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToMigrationReceipts(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -455,7 +443,7 @@ func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
 
 			return err
 		}
-		if c.Err() != nil {
+		if ctx.Err() != nil {
 			break
 		}
 		s.PublishReceipt(receipt)
