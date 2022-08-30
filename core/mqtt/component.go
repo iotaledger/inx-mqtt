@@ -73,7 +73,7 @@ func provide(c *dig.Container) error {
 
 func run() error {
 	return CoreComponent.Daemon().BackgroundWorker("MQTT", func(ctx context.Context) {
-		CoreComponent.LogInfo("Starting MQTT Broker")
+		CoreComponent.LogInfo("Starting MQTT Broker ...")
 		deps.Server.Run(ctx)
 		CoreComponent.LogInfo("Stopped MQTT Broker")
 	}, daemon.PriorityStopMQTT)

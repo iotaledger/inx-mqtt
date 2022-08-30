@@ -93,11 +93,9 @@ func (s *Server) Run(ctx context.Context) {
 
 	s.MQTTBroker = broker
 
-	go func() {
-		if err := broker.Start(); err != nil {
-			s.LogErrorfAndExit("failed to start MQTT broker: %s", err.Error())
-		}
-	}()
+	if err := broker.Start(); err != nil {
+		s.LogErrorfAndExit("failed to start MQTT broker: %s", err.Error())
+	}
 
 	if s.brokerOptions.WebsocketEnabled {
 		ctxRegister, cancelRegister := context.WithTimeout(ctx, 5*time.Second)
@@ -120,6 +118,7 @@ func (s *Server) Run(ctx context.Context) {
 	s.NodeBridge.Events.LatestMilestoneChanged.Hook(onLatestMilestone)
 	s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(onConfirmedMilestone)
 
+	s.LogInfo("Starting MQTT Broker ... done")
 	<-ctx.Done()
 
 	s.NodeBridge.Events.LatestMilestoneChanged.Detach(onLatestMilestone)
