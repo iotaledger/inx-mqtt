@@ -88,7 +88,7 @@ func (s *Server) Run(ctx context.Context) {
 		},
 		s.brokerOptions)
 	if err != nil {
-		panic(err)
+		s.LogErrorfAndExit("failed to create MQTT broker: %s", err.Error())
 	}
 
 	s.MQTTBroker = broker
@@ -100,10 +100,11 @@ func (s *Server) Run(ctx context.Context) {
 	if s.brokerOptions.WebsocketEnabled {
 		ctxRegister, cancelRegister := context.WithTimeout(ctx, 5*time.Second)
 
-		s.LogInfo("Registering API route...")
+		s.LogInfo("Registering API route ...")
 		if err := deps.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, s.brokerOptions.WebsocketBindAddress); err != nil {
 			s.LogErrorfAndExit("failed to register API route via INX: %s", err.Error())
 		}
+		s.LogInfo("Registering API route ... done")
 		cancelRegister()
 	}
 
@@ -128,7 +129,7 @@ func (s *Server) Run(ctx context.Context) {
 		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelUnregister()
 
-		s.LogInfo("Removing API route...")
+		s.LogInfo("Removing API route ...")
 		//nolint:contextcheck // false positive
 		if err := deps.NodeBridge.UnregisterAPIRoute(ctxUnregister, APIRoute); err != nil {
 			s.LogErrorf("failed to remove API route via INX: %s", err.Error())
