@@ -3,7 +3,7 @@ module github.com/iotaledger/inx-mqtt
 go 1.19
 
 require (
-	github.com/iotaledger/hive.go/core v1.0.0-beta.4
+	github.com/iotaledger/hive.go/core v1.0.0-beta.4.0.20220901233655-4e7ed3167c03
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-beta.3
 	github.com/iotaledger/inx-app v1.0.0-beta.10
 	github.com/iotaledger/inx/go v1.0.0-beta.6
@@ -12,7 +12,6 @@ require (
 	github.com/mochi-co/mqtt v1.3.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.13.0
-	github.com/stretchr/testify v1.8.0
 	go.uber.org/dig v1.15.0
 	google.golang.org/grpc v1.49.0
 )
@@ -25,7 +24,6 @@ require (
 	github.com/cockroachdb/errors v1.9.0 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20211118104740-dabe8e521a4f // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/eclipse/paho.mqtt.golang v1.4.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
@@ -59,7 +57,6 @@ require (
 	github.com/pasztorpisti/qs v0.0.0-20171216220353-8d6c33ee906c // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
 	github.com/petermattis/goid v0.0.0-20220824145935-af5520614cb6 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
@@ -84,5 +81,4 @@ require (
 	google.golang.org/genproto v0.0.0-20220829175752-36a9c930ecbf // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

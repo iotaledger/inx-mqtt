@@ -11,17 +11,20 @@ import (
 	"github.com/mochi-co/mqtt/server/listeners"
 	"github.com/mochi-co/mqtt/server/listeners/auth"
 	"github.com/mochi-co/mqtt/server/system"
+
+	"github.com/iotaledger/hive.go/core/generics/event"
+	"github.com/iotaledger/hive.go/core/subscriptionmanager"
 )
 
 // Broker is a simple mqtt publisher abstraction.
 type Broker struct {
 	broker              *mqtt.Server
 	opts                *BrokerOptions
-	subscriptionManager *SubscriptionManager
+	subscriptionManager *subscriptionmanager.SubscriptionManager[string, string]
 }
 
 // NewBroker creates a new broker.
-func NewBroker(onClientConnect OnClientConnectFunc, onClientDisconnect OnClientDisconnectFunc, onTopicSubscribe OnTopicSubscribeFunc, onTopicUnsubscribe OnTopicUnsubscribeFunc, brokerOpts *BrokerOptions) (*Broker, error) {
+func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 
 	if !brokerOpts.WebsocketEnabled && !brokerOpts.TCPEnabled {
 		return nil, errors.New("at least websocket or TCP must be enabled")
@@ -86,30 +89,25 @@ func NewBroker(onClientConnect OnClientConnectFunc, onClientDisconnect OnClientD
 		}
 	}
 
-	// this function is used to drop malicious clients
-	dropClient := func(clientID string, reason error) {
-		client, exists := broker.Clients.Get(clientID)
+	s := subscriptionmanager.New(
+		subscriptionmanager.WithMaxTopicSubscriptionsPerClient[string, string](brokerOpts.MaxTopicSubscriptionsPerClient),
+		subscriptionmanager.WithCleanupThresholdCount[string, string](brokerOpts.TopicCleanupThresholdCount),
+		subscriptionmanager.WithCleanupThresholdRatio[string, string](brokerOpts.TopicCleanupThresholdRatio),
+	)
+
+	// this event is used to drop malicious clients
+	s.Events().DropClient.Hook(event.NewClosure(func(event *subscriptionmanager.DropClientEvent[string]) {
+		client, exists := broker.Clients.Get(event.ClientID)
 		if !exists {
 			return
 		}
 
 		// stop the client connection
-		client.Stop(reason)
+		client.Stop(event.Reason)
 
 		// delete the client from the broker
-		broker.Clients.Delete(clientID)
-	}
-
-	s := NewSubscriptionManager(
-		onClientConnect,
-		onClientDisconnect,
-		onTopicSubscribe,
-		onTopicUnsubscribe,
-		dropClient,
-		brokerOpts.MaxTopicSubscriptionsPerClient,
-		brokerOpts.TopicCleanupThresholdCount,
-		brokerOpts.TopicCleanupThresholdRatio,
-	)
+		broker.Clients.Delete(event.ClientID)
+	}))
 
 	// bind the broker events to the SubscriptionManager to track the subscriptions
 	broker.Events.OnConnect = func(cl events.Client, pk events.Packet) {
@@ -133,6 +131,10 @@ func NewBroker(onClientConnect OnClientConnectFunc, onClientDisconnect OnClientD
 		opts:                brokerOpts,
 		subscriptionManager: s,
 	}, nil
+}
+
+func (b *Broker) Events() subscriptionmanager.Events[string, string] {
+	return *b.subscriptionManager.Events()
 }
 
 // Start the broker.
