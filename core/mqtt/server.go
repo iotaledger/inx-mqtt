@@ -14,7 +14,9 @@ import (
 
 	"github.com/iotaledger/hive.go/core/app/core/shutdown"
 	"github.com/iotaledger/hive.go/core/events"
+	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/logger"
+	"github.com/iotaledger/hive.go/core/subscriptionmanager"
 	"github.com/iotaledger/inx-app/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
 	inx "github.com/iotaledger/inx/go"
@@ -76,20 +78,24 @@ func NewServer(log *logger.Logger,
 }
 
 func (s *Server) Run(ctx context.Context) {
-	broker, err := mqtt.NewBroker(
-		func(clientID string) {
-			s.onClientConnect(clientID)
-		}, func(clientID string) {
-			s.onClientDisconnect(clientID)
-		}, func(clientID string, topic string) {
-			s.onSubscribeTopic(ctx, clientID, topic)
-		}, func(clientID string, topic string) {
-			s.onUnsubscribeTopic(clientID, topic)
-		},
-		s.brokerOptions)
+	broker, err := mqtt.NewBroker(s.brokerOptions)
 	if err != nil {
 		s.LogErrorfAndExit("failed to create MQTT broker: %s", err.Error())
 	}
+
+	// events
+	broker.Events().ClientConnected.Hook(event.NewClosure(func(event *subscriptionmanager.ClientEvent[string]) {
+		s.onClientConnect(event.ClientID)
+	}))
+	broker.Events().ClientDisconnected.Hook(event.NewClosure(func(event *subscriptionmanager.ClientEvent[string]) {
+		s.onClientDisconnect(event.ClientID)
+	}))
+	broker.Events().TopicSubscribed.Hook(event.NewClosure(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
+		s.onSubscribeTopic(ctx, event.ClientID, event.Topic)
+	}))
+	broker.Events().TopicUnsubscribed.Hook(event.NewClosure(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
+		s.onUnsubscribeTopic(event.ClientID, event.Topic)
+	}))
 
 	s.MQTTBroker = broker
 
