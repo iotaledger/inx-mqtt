@@ -3,7 +3,7 @@ module github.com/iotaledger/inx-mqtt
 go 1.19
 
 require (
-	github.com/iotaledger/hive.go/core v1.0.0-beta.4.0.20220901233655-4e7ed3167c03
+	github.com/iotaledger/hive.go/core v1.0.0-beta.4.0.20220902085028-b8152684ddaf
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-beta.3
 	github.com/iotaledger/inx-app v1.0.0-beta.10
 	github.com/iotaledger/inx/go v1.0.0-beta.6
