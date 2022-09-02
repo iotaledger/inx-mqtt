@@ -138,10 +138,11 @@ Example:
 
 ### <a id="mqtt_websocket"></a> Websocket
 
-| Name        | Description                                                    | Type    | Default value    |
-| ----------- | -------------------------------------------------------------- | ------- | ---------------- |
-| enabled     | Whether to enable the websocket connection of the MQTT broker  | boolean | true             |
-| bindAddress | The websocket bind address on which the MQTT broker listens on | string  | "localhost:1888" |
+| Name             | Description                                                                                       | Type    | Default value    |
+| ---------------- | ------------------------------------------------------------------------------------------------- | ------- | ---------------- |
+| enabled          | Whether to enable the websocket connection of the MQTT broker                                     | boolean | true             |
+| bindAddress      | The websocket bind address on which the MQTT broker listens on                                    | string  | "localhost:1888" |
+| advertiseAddress | The address of the websocket of the MQTT broker which is advertised to the INX Server (optional). | string  | ""               |
 
 ### <a id="mqtt_tcp"></a> TCP
 
@@ -182,7 +183,8 @@ Example:
       },
       "websocket": {
         "enabled": true,
-        "bindAddress": "localhost:1888"
+        "bindAddress": "localhost:1888",
+        "advertiseAddress": ""
       },
       "tcp": {
         "enabled": false,

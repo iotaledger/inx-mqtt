@@ -16,12 +16,14 @@ type BrokerOptions struct {
 
 	// WebsocketEnabled defines whether to enable the websocket connection of the MQTT broker.
 	WebsocketEnabled bool
-	// WebsocketBindAddress the websocket bind address on which the MQTT broker listens on.
+	// WebsocketBindAddress defines the websocket bind address on which the MQTT broker listens on.
 	WebsocketBindAddress string
+	// WebsocketAdvertiseAddress defines the address of the websocket of the MQTT broker which is advertised to the INX Server (optional).
+	WebsocketAdvertiseAddress string
 
 	// TCPEnabled defines whether to enable the TCP connection of the MQTT broker.
 	TCPEnabled bool
-	// TCPBindAddress the TCP bind address on which the MQTT broker listens on.
+	// TCPBindAddress defines the TCP bind address on which the MQTT broker listens on.
 	TCPBindAddress string
 
 	// TCPAuthEnabled defines whether to enable auth for TCP connections.
@@ -46,6 +48,7 @@ var defaultBrokerOpts = []BrokerOption{
 	WithTopicCleanupThresholdRatio(1.0),
 	WithWebsocketEnabled(true),
 	WithWebsocketBindAddress("localhost:1888"),
+	WithWebsocketAdvertiseAddress(""),
 	WithTCPEnabled(false),
 	WithTCPBindAddress("localhost:1883"),
 	WithTCPAuthEnabled(false),
@@ -118,6 +121,13 @@ func WithWebsocketEnabled(websocketEnabled bool) BrokerOption {
 func WithWebsocketBindAddress(websocketBindAddress string) BrokerOption {
 	return func(options *BrokerOptions) {
 		options.WebsocketBindAddress = websocketBindAddress
+	}
+}
+
+// WithWebsocketBindAddress sets the address of the websocket of the MQTT broker which is advertised to the INX Server (optional).
+func WithWebsocketAdvertiseAddress(websocketAdvertiseAddress string) BrokerOption {
+	return func(options *BrokerOptions) {
+		options.WebsocketAdvertiseAddress = websocketAdvertiseAddress
 	}
 }
 

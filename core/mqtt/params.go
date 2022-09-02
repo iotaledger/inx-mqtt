@@ -13,8 +13,9 @@ type ParametersMQTT struct {
 	}
 
 	Websocket struct {
-		Enabled     bool   `default:"true" usage:"whether to enable the websocket connection of the MQTT broker"`
-		BindAddress string `default:"localhost:1888" usage:"the websocket bind address on which the MQTT broker listens on"`
+		Enabled          bool   `default:"true" usage:"whether to enable the websocket connection of the MQTT broker"`
+		BindAddress      string `default:"localhost:1888" usage:"the websocket bind address on which the MQTT broker listens on"`
+		AdvertiseAddress string `default:"" usage:"the address of the websocket of the MQTT broker which is advertised to the INX Server (optional)."`
 	}
 
 	TCP struct {

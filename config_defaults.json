@@ -33,7 +33,8 @@
     },
     "websocket": {
       "enabled": true,
-      "bindAddress": "localhost:1888"
+      "bindAddress": "localhost:1888",
+      "advertiseAddress": ""
     },
     "tcp": {
       "enabled": false,
