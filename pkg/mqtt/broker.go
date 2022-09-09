@@ -33,6 +33,7 @@ func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 	broker := mqtt.NewServer(&mqtt.Options{
 		BufferSize:      brokerOpts.BufferSize,
 		BufferBlockSize: brokerOpts.BufferBlockSize,
+		InflightTTL:     30,
 	})
 
 	if brokerOpts.WebsocketEnabled {
