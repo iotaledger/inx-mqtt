@@ -107,7 +107,13 @@ func (s *Server) Run(ctx context.Context) {
 		ctxRegister, cancelRegister := context.WithTimeout(ctx, 5*time.Second)
 
 		s.LogInfo("Registering API route ...")
-		if err := deps.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, s.brokerOptions.WebsocketBindAddress); err != nil {
+
+		advertisedAddress := s.brokerOptions.WebsocketBindAddress
+		if s.brokerOptions.WebsocketAdvertiseAddress != "" {
+			advertisedAddress = s.brokerOptions.WebsocketAdvertiseAddress
+		}
+
+		if err := deps.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, advertisedAddress); err != nil {
 			s.LogErrorfAndExit("failed to register API route via INX: %s", err.Error())
 		}
 		s.LogInfo("Registering API route ... done")

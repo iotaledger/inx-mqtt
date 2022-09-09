@@ -59,6 +59,7 @@ func provide(c *dig.Container) error {
 			mqtt.WithTopicCleanupThresholdRatio(ParamsMQTT.Subscriptions.TopicsCleanupThresholdRatio),
 			mqtt.WithWebsocketEnabled(ParamsMQTT.Websocket.Enabled),
 			mqtt.WithWebsocketBindAddress(ParamsMQTT.Websocket.BindAddress),
+			mqtt.WithWebsocketAdvertiseAddress(ParamsMQTT.Websocket.AdvertiseAddress),
 			mqtt.WithTCPEnabled(ParamsMQTT.TCP.Enabled),
 			mqtt.WithTCPBindAddress(ParamsMQTT.TCP.BindAddress),
 			mqtt.WithTCPAuthEnabled(ParamsMQTT.TCP.Auth.Enabled),
