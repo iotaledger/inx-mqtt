@@ -2,7 +2,6 @@ module github.com/iotaledger/inx-mqtt
 
 go 1.19
 
-//nolint:gomoddirectives // we need to wait for the issue to be resolved upstream
 replace github.com/mochi-co/mqtt => github.com/alexsporn/mqtt v0.0.0-20220909140721-d60c438960a4
 
 require (
