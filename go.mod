@@ -13,7 +13,7 @@ require (
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/mochi-co/mqtt v1.3.2
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.13.0
+	github.com/prometheus/client_golang v1.13.1
 	go.uber.org/dig v1.15.0
 	google.golang.org/grpc v1.49.0
 )
