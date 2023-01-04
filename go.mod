@@ -14,7 +14,7 @@ require (
 	github.com/mochi-co/mqtt v1.3.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.13.0
-	go.uber.org/dig v1.15.0
+	go.uber.org/dig v1.16.0
 	google.golang.org/grpc v1.49.0
 )
 
