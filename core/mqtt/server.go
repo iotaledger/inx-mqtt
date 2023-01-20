@@ -17,7 +17,7 @@ import (
 	"github.com/iotaledger/hive.go/core/generics/event"
 	"github.com/iotaledger/hive.go/core/logger"
 	"github.com/iotaledger/hive.go/core/subscriptionmanager"
-	"github.com/iotaledger/inx-app/nodebridge"
+	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v3"
