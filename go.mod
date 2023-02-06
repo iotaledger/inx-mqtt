@@ -5,7 +5,7 @@ go 1.19
 replace github.com/mochi-co/mqtt => github.com/alexsporn/mqtt v0.0.0-20220909140721-d60c438960a4
 
 require (
-	github.com/iotaledger/hive.go/core v1.0.0-rc.2
+	github.com/iotaledger/hive.go/core v1.0.0-rc.3
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1
 	github.com/iotaledger/inx-app v1.0.0-rc.2
 	github.com/iotaledger/inx/go v1.0.0-rc.1
