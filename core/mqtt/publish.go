@@ -320,7 +320,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 	}
 }
 
-func (s *Server) PublishOutput(ctx context.Context, ledgerIndex uint32, output *inx.LedgerOutput) {
+func (s *Server) PublishOutput(ctx context.Context, ledgerIndex uint32, output *inx.LedgerOutput, publishOnAllTopics bool) {
 
 	iotaOutput, err := output.UnwrapOutput(serializer.DeSeriModeNoValidation, nil)
 	if err != nil {
@@ -340,19 +340,21 @@ func (s *Server) PublishOutput(ctx context.Context, ledgerIndex uint32, output *
 	outputsTopic := strings.ReplaceAll(topicOutputs, parameterOutputID, outputID.ToHex())
 	s.PublishPayloadFuncOnTopicIfSubscribed(outputsTopic, payloadFunc)
 
-	// If this is the first output in a transaction (index 0), then check if someone is observing the transaction that generated this output
-	if outputID.Index() == 0 {
-		ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
-		defer cancelFetch()
+	if publishOnAllTopics {
+		// If this is the first output in a transaction (index 0), then check if someone is observing the transaction that generated this output
+		if outputID.Index() == 0 {
+			ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
+			defer cancelFetch()
 
-		transactionID := outputID.TransactionID()
-		if s.hasSubscriberForTransactionIncludedBlock(transactionID) {
-			s.fetchAndPublishTransactionInclusionWithBlock(ctxFetch, transactionID, output.GetBlockId().Unwrap())
+			transactionID := outputID.TransactionID()
+			if s.hasSubscriberForTransactionIncludedBlock(transactionID) {
+				s.fetchAndPublishTransactionInclusionWithBlock(ctxFetch, transactionID, output.GetBlockId().Unwrap())
+			}
 		}
-	}
 
-	s.PublishOnOutputChainTopics(outputID, iotaOutput, payloadFunc)
-	s.PublishOnUnlockConditionTopics(topicOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
+		s.PublishOnOutputChainTopics(outputID, iotaOutput, payloadFunc)
+		s.PublishOnUnlockConditionTopics(topicOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
+	}
 }
 
 func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
