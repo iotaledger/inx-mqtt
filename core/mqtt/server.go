@@ -432,7 +432,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 
 		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Created:
-			s.PublishOutput(ctx, latestIndex, op.Created)
+			s.PublishOutput(ctx, latestIndex, op.Created, true)
 		}
 	}
 
@@ -497,7 +497,7 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 	if err != nil {
 		return
 	}
-	s.PublishOutput(ctx, resp.GetLedgerIndex(), resp.GetOutput())
+	s.PublishOutput(ctx, resp.GetLedgerIndex(), resp.GetOutput(), false)
 }
 
 func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID iotago.TransactionID) {

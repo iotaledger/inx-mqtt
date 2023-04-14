@@ -154,7 +154,7 @@ func (b *Broker) SystemInfo() *system.Info {
 }
 
 func (b *Broker) HasSubscribers(topic string) bool {
-	return b.subscriptionManager.HasSubscribers(topic)
+	return b.subscriptionManager.TopicHasSubscribers(topic)
 }
 
 // Send publishes a message.
