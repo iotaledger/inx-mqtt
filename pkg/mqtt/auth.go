@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/iotaledger/hive.go/core/basicauth"
+	"github.com/iotaledger/hive.go/web/basicauth"
 )
 
 // AuthAllowEveryone allows everyone, but without write permission.

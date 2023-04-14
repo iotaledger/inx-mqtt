@@ -80,8 +80,8 @@ func registerMQTTMetrics(registry *prometheus.Registry) {
 
 func collectMQTTBroker(server *mqtt.Server) {
 	mqttBrokerAppInfo.With(prometheus.Labels{
-		"name":           Plugin.App().Info().Name,
-		"version":        Plugin.App().Info().Version,
+		"name":           Component.App().Info().Name,
+		"version":        Component.App().Info().Version,
 		"broker_version": server.MQTTBroker.SystemInfo().Version,
 	}).Set(1)
 	mqttBrokerStarted.Set(float64(server.MQTTBroker.SystemInfo().Started))

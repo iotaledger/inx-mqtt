@@ -5,8 +5,8 @@ import (
 
 	"go.uber.org/dig"
 
-	"github.com/iotaledger/hive.go/core/app"
-	"github.com/iotaledger/hive.go/core/app/pkg/shutdown"
+	"github.com/iotaledger/hive.go/app"
+	"github.com/iotaledger/hive.go/app/shutdown"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/daemon"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
@@ -17,14 +17,12 @@ const (
 )
 
 func init() {
-	CoreComponent = &app.CoreComponent{
-		Component: &app.Component{
-			Name:     "MQTT",
-			DepsFunc: func(cDeps dependencies) { deps = cDeps },
-			Params:   params,
-			Provide:  provide,
-			Run:      run,
-		},
+	Component = &app.Component{
+		Name:     "MQTT",
+		DepsFunc: func(cDeps dependencies) { deps = cDeps },
+		Params:   params,
+		Provide:  provide,
+		Run:      run,
 	}
 }
 
@@ -35,8 +33,8 @@ type dependencies struct {
 }
 
 var (
-	CoreComponent *app.CoreComponent
-	deps          dependencies
+	Component *app.Component
+	deps      dependencies
 )
 
 func provide(c *dig.Container) error {
@@ -49,7 +47,7 @@ func provide(c *dig.Container) error {
 
 	return c.Provide(func(deps inDeps) (*Server, error) {
 		return NewServer(
-			CoreComponent.Logger(),
+			Component.Logger(),
 			deps.NodeBridge,
 			deps.ShutdownHandler,
 			mqtt.WithBufferSize(ParamsMQTT.BufferSize),
@@ -73,9 +71,9 @@ func provide(c *dig.Container) error {
 }
 
 func run() error {
-	return CoreComponent.Daemon().BackgroundWorker("MQTT", func(ctx context.Context) {
-		CoreComponent.LogInfo("Starting MQTT Broker ...")
+	return Component.Daemon().BackgroundWorker("MQTT", func(ctx context.Context) {
+		Component.LogInfo("Starting MQTT Broker ...")
 		deps.Server.Run(ctx)
-		CoreComponent.LogInfo("Stopped MQTT Broker")
+		Component.LogInfo("Stopped MQTT Broker")
 	}, daemon.PriorityStopMQTT)
 }
