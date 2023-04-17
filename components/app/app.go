@@ -4,9 +4,9 @@ import (
 	"github.com/iotaledger/hive.go/app"
 	"github.com/iotaledger/hive.go/app/components/profiling"
 	"github.com/iotaledger/hive.go/app/components/shutdown"
-	"github.com/iotaledger/inx-app/core/inx"
-	"github.com/iotaledger/inx-mqtt/core/mqtt"
-	"github.com/iotaledger/inx-mqtt/plugins/prometheus"
+	"github.com/iotaledger/inx-app/components/inx"
+	"github.com/iotaledger/inx-mqtt/components/mqtt"
+	"github.com/iotaledger/inx-mqtt/components/prometheus"
 )
 
 var (

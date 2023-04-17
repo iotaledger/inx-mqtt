@@ -14,7 +14,7 @@ import (
 	"go.uber.org/dig"
 
 	"github.com/iotaledger/hive.go/app"
-	"github.com/iotaledger/inx-mqtt/core/mqtt"
+	"github.com/iotaledger/inx-mqtt/components/mqtt"
 	"github.com/iotaledger/inx-mqtt/pkg/daemon"
 )
 
