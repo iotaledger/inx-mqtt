@@ -5,18 +5,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/iotaledger/hive.go/core/basicauth"
+	"github.com/iotaledger/hive.go/web/basicauth"
 )
 
 // AuthAllowEveryone allows everyone, but without write permission.
 type AuthAllowEveryone struct{}
 
 // Authenticate returns true if a username and password are acceptable.
+//
+//nolint:revive // we don't want to remove the user variable here, even if unused
 func (a *AuthAllowEveryone) Authenticate(user, password []byte) bool {
 	return true
 }
 
 // ACL returns true if a user has access permissions to read or write on a topic.
+//
+//nolint:revive // we don't want to remove the user variable here, even if unused
 func (a *AuthAllowEveryone) ACL(user []byte, topic string, write bool) bool {
 	// clients are not allowed to write
 	return !write
@@ -75,6 +79,8 @@ func (a *AuthAllowBasicAuth) Authenticate(user, password []byte) bool {
 }
 
 // ACL returns true if a user has access permissions to read or write on a topic.
+//
+//nolint:revive // we don't want to remove the user variable here, even if unused
 func (a *AuthAllowBasicAuth) ACL(user []byte, topic string, write bool) bool {
 	// clients are not allowed to write
 	return !write

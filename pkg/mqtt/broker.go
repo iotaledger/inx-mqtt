@@ -12,8 +12,7 @@ import (
 	"github.com/mochi-co/mqtt/server/listeners/auth"
 	"github.com/mochi-co/mqtt/server/system"
 
-	"github.com/iotaledger/hive.go/core/generics/event"
-	"github.com/iotaledger/hive.go/core/subscriptionmanager"
+	"github.com/iotaledger/hive.go/web/subscriptionmanager"
 )
 
 // Broker is a simple mqtt publisher abstraction.
@@ -21,6 +20,7 @@ type Broker struct {
 	broker              *mqtt.Server
 	opts                *BrokerOptions
 	subscriptionManager *subscriptionmanager.SubscriptionManager[string, string]
+	unhook              func()
 }
 
 // NewBroker creates a new broker.
@@ -97,7 +97,7 @@ func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 	)
 
 	// this event is used to drop malicious clients
-	s.Events().DropClient.Hook(event.NewClosure(func(event *subscriptionmanager.DropClientEvent[string]) {
+	unhook := s.Events().DropClient.Hook(func(event *subscriptionmanager.DropClientEvent[string]) {
 		client, exists := broker.Clients.Get(event.ClientID)
 		if !exists {
 			return
@@ -108,7 +108,7 @@ func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 
 		// delete the client from the broker
 		broker.Clients.Delete(event.ClientID)
-	}))
+	}).Unhook
 
 	// bind the broker events to the SubscriptionManager to track the subscriptions
 	broker.Events.OnConnect = func(cl events.Client, pk events.Packet) {
@@ -131,6 +131,7 @@ func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 		broker:              broker,
 		opts:                brokerOpts,
 		subscriptionManager: s,
+		unhook:              unhook,
 	}, nil
 }
 
@@ -145,6 +146,10 @@ func (b *Broker) Start() error {
 
 // Stop the broker.
 func (b *Broker) Stop() error {
+	if b.unhook != nil {
+		b.unhook()
+	}
+
 	return b.broker.Close()
 }
 

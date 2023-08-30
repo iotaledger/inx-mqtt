@@ -12,11 +12,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/iotaledger/hive.go/core/app/pkg/shutdown"
-	"github.com/iotaledger/hive.go/core/events"
-	"github.com/iotaledger/hive.go/core/generics/event"
-	"github.com/iotaledger/hive.go/core/logger"
-	"github.com/iotaledger/hive.go/core/subscriptionmanager"
+	"github.com/iotaledger/hive.go/app/shutdown"
+	"github.com/iotaledger/hive.go/lo"
+	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/web/subscriptionmanager"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
 	inx "github.com/iotaledger/inx/go"
@@ -83,20 +82,21 @@ func (s *Server) Run(ctx context.Context) {
 		s.LogErrorfAndExit("failed to create MQTT broker: %s", err.Error())
 	}
 
-	// events
-	broker.Events().ClientConnected.Hook(event.NewClosure(func(event *subscriptionmanager.ClientEvent[string]) {
-		s.onClientConnect(event.ClientID)
-	}))
-	broker.Events().ClientDisconnected.Hook(event.NewClosure(func(event *subscriptionmanager.ClientEvent[string]) {
-		s.onClientDisconnect(event.ClientID)
-	}))
-	broker.Events().TopicSubscribed.Hook(event.NewClosure(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
-		s.onSubscribeTopic(ctx, event.ClientID, event.Topic)
-	}))
-	broker.Events().TopicUnsubscribed.Hook(event.NewClosure(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
-		s.onUnsubscribeTopic(event.ClientID, event.Topic)
-	}))
-
+	// register broker events
+	unhookBrokerEvents := lo.Batch(
+		broker.Events().ClientConnected.Hook(func(event *subscriptionmanager.ClientEvent[string]) {
+			s.onClientConnect(event.ClientID)
+		}).Unhook,
+		broker.Events().ClientDisconnected.Hook(func(event *subscriptionmanager.ClientEvent[string]) {
+			s.onClientDisconnect(event.ClientID)
+		}).Unhook,
+		broker.Events().TopicSubscribed.Hook(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
+			s.onSubscribeTopic(ctx, event.ClientID, event.Topic)
+		}).Unhook,
+		broker.Events().TopicUnsubscribed.Hook(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
+			s.onUnsubscribeTopic(event.ClientID, event.Topic)
+		}).Unhook,
+	)
 	s.MQTTBroker = broker
 
 	if err := broker.Start(); err != nil {
@@ -113,29 +113,28 @@ func (s *Server) Run(ctx context.Context) {
 			advertisedAddress = s.brokerOptions.WebsocketAdvertiseAddress
 		}
 
-		if err := deps.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, advertisedAddress); err != nil {
+		if err := deps.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, advertisedAddress, ""); err != nil {
 			s.LogErrorfAndExit("failed to register API route via INX: %s", err.Error())
 		}
 		s.LogInfo("Registering API route ... done")
 		cancelRegister()
 	}
 
-	onLatestMilestone := events.NewClosure(func(ms *nodebridge.Milestone) {
-		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, ms)
-	})
-
-	onConfirmedMilestone := events.NewClosure(func(ms *nodebridge.Milestone) {
-		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, ms)
-	})
-
-	s.NodeBridge.Events.LatestMilestoneChanged.Hook(onLatestMilestone)
-	s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(onConfirmedMilestone)
+	// register node bridge events
+	unhookNodeBridgeEvents := lo.Batch(
+		s.NodeBridge.Events.LatestMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
+			s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, ms)
+		}).Unhook,
+		s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
+			s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, ms)
+		}).Unhook,
+	)
 
 	s.LogInfo("Starting MQTT Broker ... done")
 	<-ctx.Done()
 
-	s.NodeBridge.Events.LatestMilestoneChanged.Detach(onLatestMilestone)
-	s.NodeBridge.Events.ConfirmedMilestoneChanged.Detach(onConfirmedMilestone)
+	unhookBrokerEvents()
+	unhookNodeBridgeEvents()
 
 	if s.brokerOptions.WebsocketEnabled {
 		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)

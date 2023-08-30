@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/iotaledger/inx-mqtt/core/app"
+	"github.com/iotaledger/inx-mqtt/components/app"
 )
 
 func main() {
