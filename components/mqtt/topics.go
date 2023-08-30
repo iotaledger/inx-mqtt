@@ -7,14 +7,14 @@ const (
 	parameterOutputID      = "{outputId}"
 	parameterTag           = "{tag}"
 	parameterNFTID         = "{nftId}"
-	parameterAliasID       = "{aliasId}"
+	parameterAccountID     = "{accountId}"
 	parameterFoundryID     = "{foundryId}"
 	parameterCondition     = "{condition}"
 	parameterAddress       = "{address}"
 
-	topicMilestoneInfoLatest    = "milestone-info/latest"    // milestoneInfoPayload
-	topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
-	topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
+	//topicMilestoneInfoLatest    = "milestone-info/latest"    // milestoneInfoPayload
+	//topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
+	//topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
 
 	topicBlocks                         = "blocks"                                         // iotago.Block serialized => []bytes
 	topicBlocksTransaction              = "blocks/transaction"                             // iotago.Block serialized => []bytes
@@ -32,12 +32,10 @@ const (
 
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
 	topicNFTOutputs                              = "outputs/nft/" + parameterNFTID                                            // outputPayload
-	topicAliasOutputs                            = "outputs/alias/" + parameterAliasID                                        // outputPayload
+	topicAliasOutputs                            = "outputs/alias/" + parameterAccountID                                      // outputPayload
 	topicFoundryOutputs                          = "outputs/foundry/" + parameterFoundryID                                    // outputPayload
 	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/" + parameterCondition + "/" + parameterAddress            // outputPayload
 	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/" + parameterCondition + "/" + parameterAddress + "/spent" // outputPayload
-
-	topicReceipts = "receipts"
 )
 
 type unlockCondition string

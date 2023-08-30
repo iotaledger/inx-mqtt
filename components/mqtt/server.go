@@ -19,16 +19,15 @@ import (
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
 	inx "github.com/iotaledger/inx/go"
-	iotago "github.com/iotaledger/iota.go/v3"
+	iotago "github.com/iotaledger/iota.go/v4"
 )
 
 const (
-	grpcListenToBlocks            = "INX.ListenToBlocks"
-	grpcListenToSolidBlocks       = "INX.ListenToSolidBlocks"
-	grpcListenToReferencedBlocks  = "INX.ListenToReferencedBlocks"
-	grpcListenToLedgerUpdates     = "INX.ListenToLedgerUpdates"
-	grpcListenToMigrationReceipts = "INX.ListenToMigrationReceipts"
-	grpcListenToTipScoreUpdates   = "INX.ListenToTipScoreUpdates"
+	grpcListenToBlocks           = "INX.ListenToBlocks"
+	grpcListenToSolidBlocks      = "INX.ListenToSolidBlocks"
+	grpcListenToReferencedBlocks = "INX.ListenToReferencedBlocks"
+	grpcListenToLedgerUpdates    = "INX.ListenToLedgerUpdates"
+	grpcListenToTipScoreUpdates  = "INX.ListenToTipScoreUpdates"
 )
 
 const (
@@ -121,20 +120,23 @@ func (s *Server) Run(ctx context.Context) {
 	}
 
 	// register node bridge events
-	unhookNodeBridgeEvents := lo.Batch(
-		s.NodeBridge.Events.LatestMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
-			s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, ms)
-		}).Unhook,
-		s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
-			s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, ms)
-		}).Unhook,
-	)
+	/*
+		unhookNodeBridgeEvents := lo.Batch(
+			s.NodeBridge.Events.LatestMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
+				s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, ms)
+			}).Unhook,
+			s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
+				s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, ms)
+			}).Unhook,
+		)
+	*/
 
 	s.LogInfo("Starting MQTT Broker ... done")
 	<-ctx.Done()
 
+	s.LogInfo("Stopping MQTT Broker ...")
 	unhookBrokerEvents()
-	unhookNodeBridgeEvents()
+	//unhookNodeBridgeEvents()
 
 	if s.brokerOptions.WebsocketEnabled {
 		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
@@ -151,6 +153,8 @@ func (s *Server) Run(ctx context.Context) {
 	if err := s.MQTTBroker.Stop(); err != nil {
 		s.LogErrorf("failed to stop MQTT broker: %s", err.Error())
 	}
+
+	s.LogInfo("Stopping MQTT Broker ...done")
 }
 
 func (s *Server) onClientConnect(clientID string) {
@@ -164,20 +168,18 @@ func (s *Server) onClientDisconnect(clientID string) {
 func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic string) {
 	s.LogDebugf("%s subscribed to %s", clientID, topic)
 	switch topic {
-	case topicMilestoneInfoLatest:
-		go s.publishLatestMilestoneTopic()
+	/*
+		case topicMilestoneInfoLatest:
+			go s.publishLatestMilestoneTopic()
+		case topicMilestoneInfoConfirmed:
+			go s.publishConfirmedMilestoneTopic()
+	*/
 
-	case topicMilestoneInfoConfirmed:
-		go s.publishConfirmedMilestoneTopic()
-
-	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
+	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
 		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
 	case topicTipScoreUpdates:
 		s.startListenIfNeeded(ctx, grpcListenToTipScoreUpdates, s.listenToTipScoreUpdates)
-
-	case topicReceipts:
-		s.startListenIfNeeded(ctx, grpcListenToMigrationReceipts, s.listenToMigrationReceipts)
 
 	default:
 		switch {
@@ -208,14 +210,11 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 	s.LogDebugf("%s unsubscribed from %s", clientID, topic)
 	switch topic {
-	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData, topicMilestones:
+	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToBlocks)
 
 	case topicTipScoreUpdates:
 		s.stopListenIfNeeded(grpcListenToTipScoreUpdates)
-
-	case topicReceipts:
-		s.stopListenIfNeeded(grpcListenToMigrationReceipts)
 
 	default:
 		switch {
@@ -439,32 +438,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) listenToMigrationReceipts(ctx context.Context) error {
-
-	stream, err := s.NodeBridge.Client().ListenToMigrationReceipts(ctx, &inx.NoParams{})
-	if err != nil {
-		return err
-	}
-
-	for {
-		receipt, err := stream.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
-				break
-			}
-
-			return err
-		}
-		if ctx.Err() != nil {
-			break
-		}
-		s.PublishReceipt(receipt)
-	}
-
-	//nolint:nilerr // false positive
-	return nil
-}
-
+/*
 func (s *Server) publishLatestMilestoneTopic() {
 	s.LogDebug("publishLatestMilestoneTopic")
 	latest, err := s.NodeBridge.LatestMilestone()
@@ -480,6 +454,7 @@ func (s *Server) publishConfirmedMilestoneTopic() {
 		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, confirmed)
 	}
 }
+*/
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
 	s.LogDebugf("fetchAndPublishBlockMetadata: %s", blockID.ToHex())

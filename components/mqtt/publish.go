@@ -6,9 +6,8 @@ import (
 	"strings"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
-	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	inx "github.com/iotaledger/inx/go"
-	iotago "github.com/iotaledger/iota.go/v3"
+	iotago "github.com/iotaledger/iota.go/v4"
 )
 
 func (s *Server) sendMessageOnTopic(topic string, payload []byte) {
@@ -44,6 +43,7 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 	s.sendMessageOnTopic(topic, jsonPayload)
 }
 
+/*
 func (s *Server) PublishMilestoneOnTopic(topic string, ms *nodebridge.Milestone) {
 	if ms == nil || ms.Milestone == nil {
 		return
@@ -55,14 +55,7 @@ func (s *Server) PublishMilestoneOnTopic(topic string, ms *nodebridge.Milestone)
 		MilestoneID: ms.MilestoneID.ToHex(),
 	})
 }
-
-func (s *Server) PublishReceipt(r *inx.RawReceipt) {
-	receipt, err := r.UnwrapReceipt(serializer.DeSeriModeNoValidation, nil)
-	if err != nil {
-		return
-	}
-	s.PublishOnTopicIfSubscribed(topicReceipts, receipt)
-}
+*/
 
 func (s *Server) PublishBlock(blk *inx.RawBlock) {
 
@@ -299,13 +292,13 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 		topic := strings.ReplaceAll(topicNFTOutputs, parameterNFTID, nftID.String())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
 
-	case *iotago.AliasOutput:
-		aliasID := o.AliasID
-		if aliasID.Empty() {
-			// Use implicit AliasID
-			aliasID = iotago.AliasIDFromOutputID(outputID)
+	case *iotago.AccountOutput:
+		accountID := o.AccountID
+		if accountID.Empty() {
+			// Use implicit AccountID
+			accountID = iotago.AccountIDFromOutputID(outputID)
 		}
-		topic := strings.ReplaceAll(topicAliasOutputs, parameterAliasID, aliasID.String())
+		topic := strings.ReplaceAll(topicAliasOutputs, parameterAccountID, accountID.String())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
 
 	case *iotago.FoundryOutput:

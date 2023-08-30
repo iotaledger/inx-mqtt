@@ -4,7 +4,7 @@ import (
 	"github.com/iotaledger/hive.go/app"
 	"github.com/iotaledger/hive.go/app/components/profiling"
 	"github.com/iotaledger/hive.go/app/components/shutdown"
-	"github.com/iotaledger/inx-app/components/inx"
+	"github.com/iotaledger/inx-app/core/inx"
 	"github.com/iotaledger/inx-mqtt/components/mqtt"
 	"github.com/iotaledger/inx-mqtt/components/prometheus"
 )
@@ -14,7 +14,7 @@ var (
 	Name = "inx-mqtt"
 
 	// Version of the app.
-	Version = "1.0.0-rc.2"
+	Version = "2.0.0-alpha.1"
 )
 
 func App() *app.App {

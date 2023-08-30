@@ -26,6 +26,9 @@ func init() {
 		Provide:   provide,
 		Configure: configure,
 		Run:       run,
+		IsEnabled: func(_ *dig.Container) bool {
+			return ParamsPrometheus.Enabled
+		},
 	}
 }
 
