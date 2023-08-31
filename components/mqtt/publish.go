@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	"github.com/iotaledger/hive.go/serializer/v2"
+	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v4"
+	"github.com/iotaledger/iota.go/v4/hexutil"
 )
 
 func (s *Server) sendMessageOnTopic(topic string, payload []byte) {
@@ -43,30 +45,41 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 	s.sendMessageOnTopic(topic, jsonPayload)
 }
 
-/*
-func (s *Server) PublishMilestoneOnTopic(topic string, ms *nodebridge.Milestone) {
-	if ms == nil || ms.Milestone == nil {
+func (s *Server) PublishCommitmentOnTopic(topic string, ms *nodebridge.Commitment) {
+	if ms == nil || ms.Commitment == nil {
 		return
 	}
 
-	s.PublishOnTopicIfSubscribed(topic, &milestoneInfoPayload{
-		Index:       ms.Milestone.Index,
-		Time:        ms.Milestone.Timestamp,
-		MilestoneID: ms.MilestoneID.ToHex(),
+	s.PublishOnTopicIfSubscribed(topic, &commitemntInfoPayload{
+		CommitmentID:        ms.CommitmentID.ToHex(),
+		CommitmentSlotIndex: uint64(ms.Commitment.Index),
 	})
 }
-*/
 
 func (s *Server) PublishBlock(blk *inx.RawBlock) {
+	version, _, err := iotago.VersionFromBytes(blk.GetData())
+	if err != nil {
+		return
+	}
 
-	block, err := blk.UnwrapBlock(serializer.DeSeriModeNoValidation, nil)
+	apiForVersion, err := s.NodeBridge.APIProvider().APIForVersion(version)
+	if err != nil {
+		return
+	}
+
+	block, err := blk.UnwrapBlock(apiForVersion, nil)
 	if err != nil {
 		return
 	}
 
 	s.PublishRawOnTopicIfSubscribed(topicBlocks, blk.GetData())
 
-	switch payload := block.Payload.(type) {
+	basicBlk, isBasicBlk := block.Block.(*iotago.BasicBlock)
+	if !isBasicBlk {
+		return
+	}
+
+	switch payload := basicBlk.Payload.(type) {
 	case *iotago.Transaction:
 		s.PublishRawOnTopicIfSubscribed(topicBlocksTransaction, blk.GetData())
 
@@ -75,7 +88,7 @@ func (s *Server) PublishBlock(blk *inx.RawBlock) {
 		case *iotago.TaggedData:
 			s.PublishRawOnTopicIfSubscribed(topicBlocksTransactionTaggedData, blk.GetData())
 			if len(p.Tag) > 0 {
-				txTaggedDataTagTopic := strings.ReplaceAll(topicBlocksTransactionTaggedDataTag, parameterTag, iotago.EncodeHex(p.Tag))
+				txTaggedDataTagTopic := strings.ReplaceAll(topicBlocksTransactionTaggedDataTag, parameterTag, hexutil.EncodeHex(p.Tag))
 				s.PublishRawOnTopicIfSubscribed(txTaggedDataTagTopic, blk.GetData())
 			}
 		}
@@ -83,16 +96,9 @@ func (s *Server) PublishBlock(blk *inx.RawBlock) {
 	case *iotago.TaggedData:
 		s.PublishRawOnTopicIfSubscribed(topicBlocksTaggedData, blk.GetData())
 		if len(payload.Tag) > 0 {
-			taggedDataTagTopic := strings.ReplaceAll(topicBlocksTaggedDataTag, parameterTag, iotago.EncodeHex(payload.Tag))
+			taggedDataTagTopic := strings.ReplaceAll(topicBlocksTaggedDataTag, parameterTag, hexutil.EncodeHex(payload.Tag))
 			s.PublishRawOnTopicIfSubscribed(taggedDataTagTopic, blk.GetData())
 		}
-
-	case *iotago.Milestone:
-		payloadData, err := payload.Serialize(serializer.DeSeriModeNoValidation, nil)
-		if err != nil {
-			return
-		}
-		s.PublishRawOnTopicIfSubscribed(topicMilestones, payloadData)
 	}
 }
 
@@ -110,60 +116,28 @@ func (s *Server) PublishTransactionIncludedBlock(transactionID iotago.Transactio
 func hexEncodedBlockIDsFromINXBlockIDs(s []*inx.BlockId) []string {
 	results := make([]string, len(s))
 	for i, blkID := range s {
-		blockID := blkID.Unwrap()
-		results[i] = iotago.EncodeHex(blockID[:])
+		results[i] = blkID.Unwrap().ToHex()
 	}
 
 	return results
 }
 
 func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
-
-	blockID := metadata.UnwrapBlockID().ToHex()
+	blockID := metadata.GetBlockId().Unwrap().ToHex()
 	singleBlockTopic := strings.ReplaceAll(topicBlockMetadata, parameterBlockID, blockID)
 	hasSingleBlockTopicSubscriber := s.MQTTBroker.HasSubscribers(singleBlockTopic)
 	hasAllBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataReferenced)
-	hasTipScoreUpdatesSubscriber := s.MQTTBroker.HasSubscribers(topicTipScoreUpdates)
 
-	if !hasSingleBlockTopicSubscriber && !hasAllBlocksTopicSubscriber && !hasTipScoreUpdatesSubscriber {
+	if !hasSingleBlockTopicSubscriber && !hasAllBlocksTopicSubscriber {
 		return
 	}
 
 	response := &blockMetadataPayload{
-		BlockID:                    blockID,
-		Parents:                    hexEncodedBlockIDsFromINXBlockIDs(metadata.GetParents()),
-		Solid:                      metadata.GetSolid(),
-		ReferencedByMilestoneIndex: metadata.GetReferencedByMilestoneIndex(),
-		MilestoneIndex:             metadata.GetMilestoneIndex(),
-	}
-
-	referenced := response.ReferencedByMilestoneIndex > 0
-
-	if referenced {
-		wfIndex := metadata.GetWhiteFlagIndex()
-		response.WhiteFlagIndex = &wfIndex
-
-		switch metadata.GetLedgerInclusionState() {
-
-		//nolint:nosnakecase // grpc uses underscores
-		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_NO_TRANSACTION:
-			response.LedgerInclusionState = "noTransaction"
-
-		//nolint:nosnakecase // grpc uses underscores
-		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_CONFLICTING:
-			response.LedgerInclusionState = "conflicting"
-			conflict := metadata.GetConflictReason()
-			response.ConflictReason = &conflict
-
-		//nolint:nosnakecase // grpc uses underscores
-		case inx.BlockMetadata_LEDGER_INCLUSION_STATE_INCLUDED:
-			response.LedgerInclusionState = "included"
-		}
-	} else if metadata.GetSolid() {
-		shouldPromote := metadata.GetShouldPromote()
-		shouldReattach := metadata.GetShouldReattach()
-		response.ShouldPromote = &shouldPromote
-		response.ShouldReattach = &shouldReattach
+		BlockID:            blockID,
+		BlockState:         metadata.GetBlockState(),
+		BlockFailureReason: metadata.GetBlockFailureReason(),
+		TxState:            metadata.GetTxState(),
+		TxFailureReason:    metadata.GetTxFailureReason(),
 	}
 
 	// Serialize here instead of using publishOnTopic to avoid double JSON marshaling
@@ -175,39 +149,26 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	if hasSingleBlockTopicSubscriber {
 		s.sendMessageOnTopic(singleBlockTopic, jsonPayload)
 	}
-	if referenced && hasAllBlocksTopicSubscriber {
+	if hasAllBlocksTopicSubscriber {
 		s.sendMessageOnTopic(topicBlockMetadataReferenced, jsonPayload)
-	}
-	if hasTipScoreUpdatesSubscriber {
-		s.sendMessageOnTopic(topicTipScoreUpdates, jsonPayload)
 	}
 }
 
-func payloadForOutput(ledgerIndex uint32, output *inx.LedgerOutput, iotaOutput iotago.Output) *outputPayload {
-	rawOutputJSON, err := iotaOutput.MarshalJSON()
+func payloadForOutput(api iotago.API, ledgerIndex uint32, output *inx.LedgerOutput, iotaOutput iotago.Output) *outputPayload {
+	rawOutputJSON, err := api.JSONEncode(iotaOutput)
 	if err != nil {
 		return nil
 	}
 
-	outputID := output.GetOutputId().Unwrap()
 	rawRawOutputJSON := json.RawMessage(rawOutputJSON)
 
 	return &outputPayload{
-		Metadata: &outputMetadataPayload{
-			BlockID:                  output.GetBlockId().Unwrap().ToHex(),
-			TransactionID:            outputID.TransactionID().ToHex(),
-			Spent:                    false,
-			OutputIndex:              outputID.Index(),
-			MilestoneIndexBooked:     output.GetMilestoneIndexBooked(),
-			MilestoneTimestampBooked: output.GetMilestoneTimestampBooked(),
-			LedgerIndex:              ledgerIndex,
-		},
 		RawOutput: &rawRawOutputJSON,
 	}
 }
 
-func payloadForSpent(ledgerIndex uint32, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
-	payload := payloadForOutput(ledgerIndex, spent.GetOutput(), iotaOutput)
+func payloadForSpent(api iotago.API, ledgerIndex uint32, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
+	payload := payloadForOutput(api, ledgerIndex, spent.GetOutput(), iotaOutput)
 	if payload != nil {
 		payload.Metadata.Spent = true
 		payload.Metadata.MilestoneIndexSpent = spent.GetMilestoneIndexSpent()
@@ -234,35 +195,35 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 
 	address := unlockConditions.Address()
 	if address != nil {
-		addr := address.Address.Bech32(s.NodeBridge.ProtocolParameters().Bech32HRP)
+		addr := address.Address.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionAddress, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	storageReturn := unlockConditions.StorageDepositReturn()
 	if storageReturn != nil {
-		addr := storageReturn.ReturnAddress.Bech32(s.NodeBridge.ProtocolParameters().Bech32HRP)
+		addr := storageReturn.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStorageReturn, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	expiration := unlockConditions.Expiration()
 	if expiration != nil {
-		addr := expiration.ReturnAddress.Bech32(s.NodeBridge.ProtocolParameters().Bech32HRP)
+		addr := expiration.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionExpiration, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	stateController := unlockConditions.StateControllerAddress()
 	if stateController != nil {
-		addr := stateController.Address.Bech32(s.NodeBridge.ProtocolParameters().Bech32HRP)
+		addr := stateController.Address.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStateController, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	governor := unlockConditions.GovernorAddress()
 	if governor != nil {
-		addr := governor.Address.Bech32(s.NodeBridge.ProtocolParameters().Bech32HRP)
+		addr := governor.Address.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionGovernor, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
@@ -314,8 +275,9 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 }
 
 func (s *Server) PublishOutput(ctx context.Context, ledgerIndex uint32, output *inx.LedgerOutput, publishOnAllTopics bool) {
-
-	iotaOutput, err := output.UnwrapOutput(serializer.DeSeriModeNoValidation, nil)
+	// get api by verson or ledgerIndex?
+	api := s.NodeBridge.APIProvider().CurrentAPI()
+	iotaOutput, err := output.UnwrapOutput(api, nil)
 	if err != nil {
 		return
 	}
@@ -323,7 +285,7 @@ func (s *Server) PublishOutput(ctx context.Context, ledgerIndex uint32, output *
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			payload = payloadForOutput(ledgerIndex, output, iotaOutput)
+			payload = payloadForOutput(api, ledgerIndex, output, iotaOutput)
 		}
 
 		return payload

@@ -6,39 +6,27 @@ import (
 	inx "github.com/iotaledger/inx/go"
 )
 
-// milestoneInfoPayload defines the payload of the milestone latest and confirmed topics.
-type milestoneInfoPayload struct {
-	// The index of the milestone.
-	Index uint32 `json:"index"`
-	// The unix time of the milestone payload.
-	Time uint32 `json:"timestamp"`
-	// The ID of the milestone.
-	MilestoneID string `json:"milestoneId"`
+// commitemntInfoPayload defines the payload of the commitment latest and confirmed topics.
+type commitemntInfoPayload struct {
+	// The identifier of commitment.
+	CommitmentID string `json:"commitmentId"`
+	// The slot index of the commitment.
+	CommitmentSlotIndex uint64 `json:"commitmentSlotIndex"`
 }
 
 // blockMetadataPayload defines the payload of the block metadata topic.
 type blockMetadataPayload struct {
 	// The hex encoded block ID of the block.
 	BlockID string `json:"blockId"`
-	// The hex encoded block IDs of the parents the block references.
-	Parents []string `json:"parentBlockIds"`
-	// Whether the block is solid.
-	Solid bool `json:"isSolid"`
-	// The milestone index that references this block.
-	ReferencedByMilestoneIndex uint32 `json:"referencedByMilestoneIndex,omitempty"`
-	// If this block represents a milestone this is the milestone index
-	MilestoneIndex uint32 `json:"milestoneIndex,omitempty"`
-	// The ledger inclusion state of the transaction payload.
-	LedgerInclusionState string `json:"ledgerInclusionState,omitempty"`
-	// The reason why this block is marked as conflicting.
+	// The state of the block.
 	//nolint:nosnakecase // grpc uses underscores
-	ConflictReason *inx.BlockMetadata_ConflictReason `json:"conflictReason,omitempty"`
-	// Whether the block should be promoted.
-	ShouldPromote *bool `json:"shouldPromote,omitempty"`
-	// Whether the block should be reattached.
-	ShouldReattach *bool `json:"shouldReattach,omitempty"`
-	// If this block is referenced by a milestone this returns the index of that block inside the milestone by whiteflag ordering.
-	WhiteFlagIndex *uint32 `json:"whiteFlagIndex,omitempty"`
+	BlockState inx.BlockMetadata_BlockState `json:"blockState,omitempty"`
+	// The reason why the block failed.
+	BlockFailureReason inx.BlockMetadata_BlockFailureReason `json:"blockFailureReason,omitempty"`
+	// The state of the transaction.
+	TxState inx.BlockMetadata_TransactionState `json:"txState,omitempty"`
+	// The reason why the transaction failed.
+	TxFailureReason inx.BlockMetadata_TransactionFailureReason `json:"txFailureReason,omitempty"`
 }
 
 // outputMetadataPayload defines the metadata of an output.
@@ -67,8 +55,6 @@ type outputMetadataPayload struct {
 
 // outputPayload defines the payload of the output topics.
 type outputPayload struct {
-	// The metadata of the output.
-	Metadata *outputMetadataPayload `json:"metadata"`
 	// The output in its serialized form.
 	RawOutput *json.RawMessage `json:"output"`
 }

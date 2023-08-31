@@ -120,16 +120,14 @@ func (s *Server) Run(ctx context.Context) {
 	}
 
 	// register node bridge events
-	/*
-		unhookNodeBridgeEvents := lo.Batch(
-			s.NodeBridge.Events.LatestMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
-				s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, ms)
-			}).Unhook,
-			s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
-				s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, ms)
-			}).Unhook,
-		)
-	*/
+	unhookNodeBridgeEvents := lo.Batch(
+		s.NodeBridge.Events.LatestCommittedSlotChanged.Hook(func(ms *nodebridge.Commitment) {
+			s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, ms)
+		}).Unhook,
+		s.NodeBridge.Events.LatestFinalizedSlotChanged.Hook(func(ms iotago.SlotIndex) {
+			s.PublishCommitmentOnTopic(topicCommitmentInfoConfirmed, ms)
+		}).Unhook,
+	)
 
 	s.LogInfo("Starting MQTT Broker ... done")
 	<-ctx.Done()
@@ -178,9 +176,6 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
 		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
-	case topicTipScoreUpdates:
-		s.startListenIfNeeded(ctx, grpcListenToTipScoreUpdates, s.listenToTipScoreUpdates)
-
 	default:
 		switch {
 		case strings.HasPrefix(topic, "block-metadata/"):
@@ -212,9 +207,6 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 	switch topic {
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
 		s.stopListenIfNeeded(grpcListenToBlocks)
-
-	case topicTipScoreUpdates:
-		s.stopListenIfNeeded(grpcListenToTipScoreUpdates)
 
 	default:
 		switch {
@@ -347,32 +339,6 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
 
 	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(ctx, &inx.NoParams{})
-	if err != nil {
-		return err
-	}
-
-	for {
-		blockMetadata, err := stream.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
-				break
-			}
-
-			return err
-		}
-		if ctx.Err() != nil {
-			break
-		}
-		s.PublishBlockMetadata(blockMetadata)
-	}
-
-	//nolint:nilerr // false positive
-	return nil
-}
-
-func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
-
-	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}

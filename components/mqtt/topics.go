@@ -12,9 +12,9 @@ const (
 	parameterCondition     = "{condition}"
 	parameterAddress       = "{address}"
 
-	//topicMilestoneInfoLatest    = "milestone-info/latest"    // milestoneInfoPayload
-	//topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
-	//topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
+	topicCommitmentInfoLatest    = "commitment-info/latest"    // milestoneInfoPayload
+	topicCommitmentInfoConfirmed = "commitment-info/confirmed" // milestoneInfoPayload
+	topicCommitments             = "commitments"               // iotago.Milestone serialized => []bytes
 
 	topicBlocks                         = "blocks"                                         // iotago.Block serialized => []bytes
 	topicBlocksTransaction              = "blocks/transaction"                             // iotago.Block serialized => []bytes
@@ -27,8 +27,6 @@ const (
 
 	topicBlockMetadata           = "block-metadata/" + parameterBlockID // blockMetadataPayload	// renotify if "reattach" or "promote" changes? => add new INX event?
 	topicBlockMetadataReferenced = "block-metadata/referenced"          // blockMetadataPayload
-
-	topicTipScoreUpdates = "tip-score-updates" // blockMetadataPayload
 
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
 	topicNFTOutputs                              = "outputs/nft/" + parameterNFTID                                            // outputPayload
