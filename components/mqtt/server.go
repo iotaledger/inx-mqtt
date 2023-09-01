@@ -23,11 +23,10 @@ import (
 )
 
 const (
-	grpcListenToBlocks           = "INX.ListenToBlocks"
-	grpcListenToSolidBlocks      = "INX.ListenToSolidBlocks"
-	grpcListenToReferencedBlocks = "INX.ListenToReferencedBlocks"
-	grpcListenToLedgerUpdates    = "INX.ListenToLedgerUpdates"
-	grpcListenToTipScoreUpdates  = "INX.ListenToTipScoreUpdates"
+	grpcListenToBlocks          = "INX.ListenToBlocks"
+	grpcListenToAcceptedBlocks  = "INX.ListenToAcceptedBlocks"
+	grpcListenToConfirmedBlocks = "INX.ListenToConfirmedBlocks"
+	grpcListenToLedgerUpdates   = "INX.ListenToLedgerUpdates"
 )
 
 const (
@@ -179,8 +178,8 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 	default:
 		switch {
 		case strings.HasPrefix(topic, "block-metadata/"):
-			s.startListenIfNeeded(ctx, grpcListenToSolidBlocks, s.listenToSolidBlocks)
-			s.startListenIfNeeded(ctx, grpcListenToReferencedBlocks, s.listenToReferencedBlocks)
+			s.startListenIfNeeded(ctx, grpcListenToAcceptedBlocks, s.listenToAcceptedBlocks)
+			s.startListenIfNeeded(ctx, grpcListenToConfirmedBlocks, s.listenToConfirmedBlocks)
 
 			if blockID := blockIDFromBlockMetadataTopic(topic); !blockID.Empty() {
 				go s.fetchAndPublishBlockMetadata(ctx, blockID)
@@ -211,8 +210,8 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 	default:
 		switch {
 		case strings.HasPrefix(topic, "block-metadata/"):
-			s.stopListenIfNeeded(grpcListenToSolidBlocks)
-			s.stopListenIfNeeded(grpcListenToReferencedBlocks)
+			s.stopListenIfNeeded(grpcListenToAcceptedBlocks)
+			s.stopListenIfNeeded(grpcListenToConfirmedBlocks)
 
 		case strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data"):
 			s.stopListenIfNeeded(grpcListenToBlocks)
@@ -310,9 +309,9 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) listenToSolidBlocks(ctx context.Context) error {
+func (s *Server) listenToAcceptedBlocks(ctx context.Context) error {
 
-	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(ctx, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToAcceptedBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -336,9 +335,9 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
+func (s *Server) listenToConfirmedBlocks(ctx context.Context) error {
 
-	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(ctx, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToConfirmedBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}

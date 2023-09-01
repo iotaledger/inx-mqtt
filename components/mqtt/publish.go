@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/iotaledger/hive.go/serializer/v2"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v4"
@@ -126,9 +125,10 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	blockID := metadata.GetBlockId().Unwrap().ToHex()
 	singleBlockTopic := strings.ReplaceAll(topicBlockMetadata, parameterBlockID, blockID)
 	hasSingleBlockTopicSubscriber := s.MQTTBroker.HasSubscribers(singleBlockTopic)
-	hasAllBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataReferenced)
+	hasConfirmedBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataConfirmed)
+	hasFinalizedBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataFinalized)
 
-	if !hasSingleBlockTopicSubscriber && !hasAllBlocksTopicSubscriber {
+	if !hasSingleBlockTopicSubscriber && !hasConfirmedBlocksTopicSubscriber && !hasFinalizedBlocksTopicSubscriber {
 		return
 	}
 
@@ -149,8 +149,11 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	if hasSingleBlockTopicSubscriber {
 		s.sendMessageOnTopic(singleBlockTopic, jsonPayload)
 	}
-	if hasAllBlocksTopicSubscriber {
-		s.sendMessageOnTopic(topicBlockMetadataReferenced, jsonPayload)
+	if hasConfirmedBlocksTopicSubscriber {
+		s.sendMessageOnTopic(topicBlockMetadataConfirmed, jsonPayload)
+	}
+	if hasFinalizedBlocksTopicSubscriber {
+		s.sendMessageOnTopic(topicBlockMetadataFinalized, jsonPayload)
 	}
 }
 
@@ -337,7 +340,7 @@ func (s *Server) PublishSpent(ledgerIndex uint32, spent *inx.LedgerSpent) {
 func blockIDFromBlockMetadataTopic(topic string) iotago.BlockID {
 	if strings.HasPrefix(topic, "block-metadata/") && !strings.HasSuffix(topic, "/referenced") {
 		blockIDHex := strings.Replace(topic, "block-metadata/", "", 1)
-		blockID, err := iotago.BlockIDFromHexString(blockIDHex)
+		blockID, err := iotago.SlotIdentifierFromHexString(blockIDHex)
 		if err != nil {
 			return iotago.EmptyBlockID()
 		}
