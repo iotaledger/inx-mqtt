@@ -31,10 +31,12 @@ const (
 
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
 	topicNFTOutputs                              = "outputs/nft/" + parameterNFTID                                            // outputPayload
-	topicAliasOutputs                            = "outputs/alias/" + parameterAccountID                                      // outputPayload
+	topicAccountOutputs                          = "outputs/account/" + parameterAccountID                                    // outputPayload
 	topicFoundryOutputs                          = "outputs/foundry/" + parameterFoundryID                                    // outputPayload
 	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/" + parameterCondition + "/" + parameterAddress            // outputPayload
 	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/" + parameterCondition + "/" + parameterAddress + "/spent" // outputPayload
+
+	topicOutputsMetadata = "output-metadata/" + parameterOutputID // outputMetadataPayload
 )
 
 type unlockCondition string
