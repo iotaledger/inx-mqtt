@@ -187,7 +187,7 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 		case strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data"):
 			s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
-		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "output-metadata/") || strings.HasPrefix(topic, "transactions/"):
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
 			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
 			if transactionID := transactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != emptyTransactionID {

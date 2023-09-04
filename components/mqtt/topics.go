@@ -25,7 +25,7 @@ const (
 
 	topicTransactionsIncludedBlock = "transactions/" + parameterTransactionID + "/included-block" // iotago.Block serialized => []bytes
 
-	topicBlockMetadata          = "block-metadata/" + parameterBlockID // blockMetadataPayload	// renotify if "reattach" or "promote" changes? => add new INX event?
+	topicBlockMetadata          = "block-metadata/" + parameterBlockID // blockMetadataPayload
 	topicBlockMetadataConfirmed = "block-metadata/confirmed"           // blockMetadataPayload
 	topicBlockMetadataFinalized = "block-metadata/finalized"           // blockMetadataPayload
 
