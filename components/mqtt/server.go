@@ -120,11 +120,11 @@ func (s *Server) Run(ctx context.Context) {
 
 	// register node bridge events
 	unhookNodeBridgeEvents := lo.Batch(
-		s.NodeBridge.Events.LatestCommittedSlotChanged.Hook(func(ms *nodebridge.Commitment) {
-			s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, ms)
+		s.NodeBridge.Events.LatestCommittedSlotChanged.Hook(func(c *nodebridge.Commitment) {
+			s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, c.Commitment)
 		}).Unhook,
-		s.NodeBridge.Events.LatestFinalizedSlotChanged.Hook(func(ms iotago.SlotIndex) {
-			s.PublishCommitmentOnTopic(topicCommitmentInfoConfirmed, ms)
+		s.NodeBridge.Events.LatestFinalizedSlotChanged.Hook(func(c *nodebridge.Commitment) {
+			s.PublishCommitmentOnTopic(topicCommitmentInfoFinalized, c.Commitment)
 		}).Unhook,
 	)
 
@@ -133,7 +133,7 @@ func (s *Server) Run(ctx context.Context) {
 
 	s.LogInfo("Stopping MQTT Broker ...")
 	unhookBrokerEvents()
-	//unhookNodeBridgeEvents()
+	unhookNodeBridgeEvents()
 
 	if s.brokerOptions.WebsocketEnabled {
 		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
@@ -165,12 +165,11 @@ func (s *Server) onClientDisconnect(clientID string) {
 func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic string) {
 	s.LogDebugf("%s subscribed to %s", clientID, topic)
 	switch topic {
-	/*
-		case topicMilestoneInfoLatest:
-			go s.publishLatestMilestoneTopic()
-		case topicMilestoneInfoConfirmed:
-			go s.publishConfirmedMilestoneTopic()
-	*/
+
+	case topicCommitmentInfoLatest:
+		go s.publishLatestCommitmentTopic()
+	case topicCommitmentInfoFinalized:
+		go s.publishFinalizedCommitmentTopic()
 
 	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
 		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
@@ -408,23 +407,21 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	return nil
 }
 
-/*
-func (s *Server) publishLatestMilestoneTopic() {
-	s.LogDebug("publishLatestMilestoneTopic")
-	latest, err := s.NodeBridge.LatestMilestone()
+func (s *Server) publishLatestCommitmentTopic() {
+	s.LogDebug("publishLatestCommitmentTopic")
+	latest, err := s.NodeBridge.LatestCommitment()
 	if err == nil {
-		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, latest)
+		s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, latest)
 	}
 }
 
-func (s *Server) publishConfirmedMilestoneTopic() {
-	s.LogDebug("publishConfirmedMilestoneTopic")
-	confirmed, err := s.NodeBridge.ConfirmedMilestone()
+func (s *Server) publishFinalizedCommitmentTopic() {
+	s.LogDebug("publishFinalizedCommitmentTopic")
+	finalized, err := s.NodeBridge.LatestFinalizedCommitment()
 	if err == nil {
-		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, confirmed)
+		s.PublishCommitmentOnTopic(topicCommitmentInfoFinalized, finalized)
 	}
 }
-*/
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
 	s.LogDebugf("fetchAndPublishBlockMetadata: %s", blockID.ToHex())

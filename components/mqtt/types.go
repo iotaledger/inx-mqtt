@@ -11,7 +11,7 @@ type commitemntInfoPayload struct {
 	// The identifier of commitment.
 	CommitmentID string `json:"commitmentId"`
 	// The slot index of the commitment.
-	CommitmentSlotIndex uint64 `json:"commitmentSlotIndex"`
+	CommitmentIndex uint64 `json:"commitmentIndex"`
 }
 
 // blockMetadataPayload defines the payload of the block metadata topic.

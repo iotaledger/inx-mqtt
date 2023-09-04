@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v4"
 	"github.com/iotaledger/iota.go/v4/hexutil"
@@ -44,14 +43,19 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 	s.sendMessageOnTopic(topic, jsonPayload)
 }
 
-func (s *Server) PublishCommitmentOnTopic(topic string, ms *nodebridge.Commitment) {
-	if ms == nil || ms.Commitment == nil {
+func (s *Server) PublishCommitmentOnTopic(topic string, commitment *iotago.Commitment) {
+	if commitment == nil {
+		return
+	}
+
+	id, err := commitment.ID()
+	if err != nil {
 		return
 	}
 
 	s.PublishOnTopicIfSubscribed(topic, &commitemntInfoPayload{
-		CommitmentID:        ms.CommitmentID.ToHex(),
-		CommitmentSlotIndex: uint64(ms.Commitment.Index),
+		CommitmentID:    id.ToHex(),
+		CommitmentIndex: uint64(id.Index()),
 	})
 }
 

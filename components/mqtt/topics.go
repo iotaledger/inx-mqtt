@@ -13,7 +13,7 @@ const (
 	parameterAddress       = "{address}"
 
 	topicCommitmentInfoLatest    = "commitment-info/latest"    // milestoneInfoPayload
-	topicCommitmentInfoConfirmed = "commitment-info/confirmed" // milestoneInfoPayload
+	topicCommitmentInfoFinalized = "commitment-info/finalized" // milestoneInfoPayload
 	topicCommitments             = "commitments"               // iotago.Milestone serialized => []bytes
 
 	topicBlocks                         = "blocks"                                         // iotago.Block serialized => []bytes
