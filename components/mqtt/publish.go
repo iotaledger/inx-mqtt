@@ -44,15 +44,20 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 }
 
 func (s *Server) PublishCommitmentOnTopic(topic string, commitment *iotago.Commitment) {
-	if commitment == nil {
-		return
-	}
-
-	id, err := commitment.ID()
+	apiForVersion, err := s.NodeBridge.APIProvider().APIForVersion(commitment.Version)
 	if err != nil {
 		return
 	}
 
+	rawCommitment, err := apiForVersion.Encode(commitment)
+	if err != nil {
+		return
+	}
+
+	s.PublishRawOnTopicIfSubscribed(topic, rawCommitment)
+}
+
+func (s *Server) PublishCommitmentInfoOnTopic(topic string, id iotago.CommitmentID) {
 	s.PublishOnTopicIfSubscribed(topic, &commitemntInfoPayload{
 		CommitmentID:    id.ToHex(),
 		CommitmentIndex: uint64(id.Index()),

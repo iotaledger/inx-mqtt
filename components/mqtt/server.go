@@ -121,10 +121,11 @@ func (s *Server) Run(ctx context.Context) {
 	// register node bridge events
 	unhookNodeBridgeEvents := lo.Batch(
 		s.NodeBridge.Events.LatestCommittedSlotChanged.Hook(func(c *nodebridge.Commitment) {
-			s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, c.Commitment)
+			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoLatest, c.CommitmentID)
+			s.PublishCommitmentOnTopic(topicCommitments, c.Commitment)
 		}).Unhook,
 		s.NodeBridge.Events.LatestFinalizedSlotChanged.Hook(func(c *nodebridge.Commitment) {
-			s.PublishCommitmentOnTopic(topicCommitmentInfoFinalized, c.Commitment)
+			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, c.CommitmentID)
 		}).Unhook,
 	)
 
@@ -167,11 +168,13 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 	switch topic {
 
 	case topicCommitmentInfoLatest:
-		go s.publishLatestCommitmentTopic()
+		go s.publishLatestCommitmentInfoTopic()
 	case topicCommitmentInfoFinalized:
-		go s.publishFinalizedCommitmentTopic()
+		go s.publishFinalizedCommitmentInfoTopic()
+	case topicCommitments:
+		go s.publishLatestCommitmentTopic()
 
-	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
+	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData:
 		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
 
 	default:
@@ -208,7 +211,7 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 	s.LogDebugf("%s unsubscribed from %s", clientID, topic)
 	switch topic {
-	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
+	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData:
 		s.stopListenIfNeeded(grpcListenToBlocks)
 
 	default:
@@ -410,17 +413,44 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 func (s *Server) publishLatestCommitmentTopic() {
 	s.LogDebug("publishLatestCommitmentTopic")
 	latest, err := s.NodeBridge.LatestCommitment()
-	if err == nil {
-		s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, latest)
+	if err != nil {
+		s.LogError("failed to retrieve latest commitment")
 	}
+
+	s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, latest)
 }
 
-func (s *Server) publishFinalizedCommitmentTopic() {
-	s.LogDebug("publishFinalizedCommitmentTopic")
-	finalized, err := s.NodeBridge.LatestFinalizedCommitment()
-	if err == nil {
-		s.PublishCommitmentOnTopic(topicCommitmentInfoFinalized, finalized)
+func (s *Server) publishLatestCommitmentInfoTopic() {
+	s.LogDebug("publishLatestCommitmentInfoTopic")
+	latest, err := s.NodeBridge.LatestCommitment()
+	if err != nil {
+		s.LogError("failed to retrieve latest commitment")
 	}
+
+	id, err := latest.ID()
+	if err != nil {
+		s.LogError("failed to retrieve latest commitment")
+	}
+
+	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoLatest, id)
+
+	s.LogDebug("publishLatestCommitmentTopic")
+	s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, latest)
+}
+
+func (s *Server) publishFinalizedCommitmentInfoTopic() {
+	s.LogDebug("publishFinalizedCommitmentInfoTopic")
+	finalized, err := s.NodeBridge.LatestFinalizedCommitment()
+	if err != nil {
+		s.LogError("failed to retrieve latest commitment")
+	}
+
+	id, err := finalized.ID()
+	if err != nil {
+		s.LogError("failed to retrieve latest finalized commitment")
+	}
+
+	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, id)
 }
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
