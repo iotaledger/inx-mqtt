@@ -26,8 +26,8 @@ const (
 	topicTransactionsIncludedBlock = "transactions/" + parameterTransactionID + "/included-block" // iotago.Block serialized => []bytes
 
 	topicBlockMetadata          = "block-metadata/" + parameterBlockID // blockMetadataPayload
+	topicBlockMetadataAccepted  = "block-metadata/accepted"            // blockMetadataPayload
 	topicBlockMetadataConfirmed = "block-metadata/confirmed"           // blockMetadataPayload
-	topicBlockMetadataFinalized = "block-metadata/finalized"           // blockMetadataPayload
 
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
 	topicNFTOutputs                              = "outputs/nft/" + parameterNFTID                                            // outputPayload

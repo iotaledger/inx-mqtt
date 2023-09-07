@@ -120,10 +120,10 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	blockID := metadata.GetBlockId().Unwrap().ToHex()
 	singleBlockTopic := strings.ReplaceAll(topicBlockMetadata, parameterBlockID, blockID)
 	hasSingleBlockTopicSubscriber := s.MQTTBroker.HasSubscribers(singleBlockTopic)
+	hasAcceptedBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataAccepted)
 	hasConfirmedBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataConfirmed)
-	hasFinalizedBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataFinalized)
 
-	if !hasSingleBlockTopicSubscriber && !hasConfirmedBlocksTopicSubscriber && !hasFinalizedBlocksTopicSubscriber {
+	if !hasSingleBlockTopicSubscriber && !hasConfirmedBlocksTopicSubscriber && !hasAcceptedBlocksTopicSubscriber {
 		return
 	}
 
@@ -147,8 +147,8 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	if hasConfirmedBlocksTopicSubscriber {
 		s.sendMessageOnTopic(topicBlockMetadataConfirmed, jsonPayload)
 	}
-	if hasFinalizedBlocksTopicSubscriber {
-		s.sendMessageOnTopic(topicBlockMetadataFinalized, jsonPayload)
+	if hasAcceptedBlocksTopicSubscriber {
+		s.sendMessageOnTopic(topicBlockMetadataAccepted, jsonPayload)
 	}
 }
 
