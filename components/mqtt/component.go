@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	APIRoute = "mqtt/v1"
+	APIRoute = "mqtt/v2"
 )
 
 func init() {
