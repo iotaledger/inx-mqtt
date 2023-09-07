@@ -272,7 +272,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, publishOnAllTopics bool) {
 	// get api by verson or ledgerIndex?
 	api := s.NodeBridge.APIProvider().CurrentAPI()
-	iotaOutput, err := output.UnwrapOutput(api, nil)
+	iotaOutput, err := output.UnwrapOutput(api)
 	if err != nil {
 		return
 	}
@@ -338,7 +338,7 @@ func (s *Server) PublishOutputMetadata(outputID iotago.OutputID, metadata *inx.O
 
 func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent) {
 	api := s.NodeBridge.APIProvider().CurrentAPI()
-	iotaOutput, err := spent.GetOutput().UnwrapOutput(api, nil)
+	iotaOutput, err := spent.GetOutput().UnwrapOutput(api)
 	if err != nil {
 		return
 	}
@@ -404,7 +404,7 @@ func outputIDFromOutputsTopic(topic string) iotago.OutputID {
 
 func outputIDFromOutputMetadataTopic(topic string) iotago.OutputID {
 	if strings.HasPrefix(topic, "output-metadata/") {
-		outputIDHex := strings.Replace(topic, "output-metadata", "", 1)
+		outputIDHex := strings.Replace(topic, "output-metadata/", "", 1)
 		outputID, err := iotago.OutputIDFromHex(outputIDHex)
 		if err != nil {
 			return emptyOutputID
