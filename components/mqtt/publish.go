@@ -116,15 +116,6 @@ func (s *Server) PublishTransactionIncludedBlock(transactionID iotago.Transactio
 	s.PublishRawOnTopicIfSubscribed(transactionTopic, block.GetData())
 }
 
-func hexEncodedBlockIDsFromINXBlockIDs(s []*inx.BlockId) []string {
-	results := make([]string, len(s))
-	for i, blkID := range s {
-		results[i] = blkID.Unwrap().ToHex()
-	}
-
-	return results
-}
-
 func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	blockID := metadata.GetBlockId().Unwrap().ToHex()
 	singleBlockTopic := strings.ReplaceAll(topicBlockMetadata, parameterBlockID, blockID)
