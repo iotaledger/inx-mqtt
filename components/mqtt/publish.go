@@ -70,7 +70,7 @@ func (s *Server) PublishBlock(blk *inx.RawBlock) {
 		return
 	}
 
-	block, err := blk.UnwrapBlock(apiForVersion, nil)
+	block, err := blk.UnwrapBlock(apiForVersion)
 	if err != nil {
 		return
 	}
