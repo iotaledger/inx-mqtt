@@ -12,9 +12,9 @@ const (
 	parameterCondition     = "{condition}"
 	parameterAddress       = "{address}"
 
-	topicCommitmentInfoLatest    = "commitment-info/latest"    // milestoneInfoPayload
-	topicCommitmentInfoFinalized = "commitment-info/finalized" // milestoneInfoPayload
-	topicCommitments             = "commitments"               // iotago.Milestone serialized => []bytes
+	topicCommitmentInfoLatest    = "commitment-info/latest"    // commitmentInfoPayload
+	topicCommitmentInfoFinalized = "commitment-info/finalized" // commitmentInfoPayload
+	topicCommitments             = "commitments"               // iotago.Commitment serialized => []bytes
 
 	topicBlocks                         = "blocks"                                         // iotago.Block serialized => []bytes
 	topicBlocksTransaction              = "blocks/transaction"                             // iotago.Block serialized => []bytes
