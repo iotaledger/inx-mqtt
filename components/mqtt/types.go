@@ -22,10 +22,13 @@ type blockMetadataPayload struct {
 	//nolint:nosnakecase // grpc uses underscores
 	BlockState inx.BlockMetadata_BlockState `json:"blockState,omitempty"`
 	// The reason why the block failed.
+	//nolint:nosnakecase // grpc uses underscores
 	BlockFailureReason inx.BlockMetadata_BlockFailureReason `json:"blockFailureReason,omitempty"`
 	// The state of the transaction.
+	//nolint:nosnakecase // grpc uses underscores
 	TxState inx.BlockMetadata_TransactionState `json:"txState,omitempty"`
 	// The reason why the transaction failed.
+	//nolint:nosnakecase // grpc uses underscores
 	TxFailureReason inx.BlockMetadata_TransactionFailureReason `json:"txFailureReason,omitempty"`
 }
 
