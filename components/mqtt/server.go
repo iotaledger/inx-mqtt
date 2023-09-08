@@ -415,6 +415,7 @@ func (s *Server) publishLatestCommitmentTopic() {
 	latest, err := s.NodeBridge.LatestCommitment()
 	if err != nil {
 		s.LogError("failed to retrieve latest commitment")
+		return
 	}
 
 	s.PublishRawCommitmentOnTopic(topicCommitmentInfoLatest, latest)
@@ -425,11 +426,13 @@ func (s *Server) publishLatestCommitmentInfoTopic() {
 	latest, err := s.NodeBridge.LatestCommitment()
 	if err != nil {
 		s.LogError("failed to retrieve latest commitment")
+		return
 	}
 
 	id, err := latest.ID()
 	if err != nil {
 		s.LogError("failed to retrieve latest commitment")
+		return
 	}
 
 	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoLatest, id)
@@ -443,11 +446,13 @@ func (s *Server) publishFinalizedCommitmentInfoTopic() {
 	finalized, err := s.NodeBridge.LatestFinalizedCommitment()
 	if err != nil {
 		s.LogError("failed to retrieve latest commitment")
+		return
 	}
 
 	id, err := finalized.ID()
 	if err != nil {
 		s.LogError("failed to retrieve latest finalized commitment")
+		return
 	}
 
 	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, id)
