@@ -58,7 +58,7 @@ func (s *Server) PublishCommitmentOnTopic(topic string, commitment *iotago.Commi
 }
 
 func (s *Server) PublishCommitmentInfoOnTopic(topic string, id iotago.CommitmentID) {
-	s.PublishOnTopicIfSubscribed(topic, &commitemntInfoPayload{
+	s.PublishOnTopicIfSubscribed(topic, &commitmentInfoPayload{
 		CommitmentID:    id.ToHex(),
 		CommitmentIndex: uint64(id.Index()),
 	})

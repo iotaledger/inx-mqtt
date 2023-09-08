@@ -6,8 +6,8 @@ import (
 	inx "github.com/iotaledger/inx/go"
 )
 
-// commitemntInfoPayload defines the payload of the commitment latest and confirmed topics.
-type commitemntInfoPayload struct {
+// commitmentInfoPayload defines the payload of the commitment latest and confirmed topics.
+type commitmentInfoPayload struct {
 	// The identifier of commitment.
 	CommitmentID string `json:"commitmentId"`
 	// The slot index of the commitment.
