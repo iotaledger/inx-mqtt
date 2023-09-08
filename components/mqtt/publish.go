@@ -308,11 +308,6 @@ func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex
 
 func (s *Server) PublishOutputMetadata(outputID iotago.OutputID, metadata *inx.OutputMetadata) {
 	outputMetadataTopic := strings.ReplaceAll(topicOutputsMetadata, parameterOutputID, outputID.ToHex())
-	hasOutputMetadataTopicSubscriber := s.MQTTBroker.HasSubscribers(outputMetadataTopic)
-
-	if !hasOutputMetadataTopicSubscriber {
-		return
-	}
 
 	response := &outputMetadataPayload{
 		BlockID:              metadata.GetBlockId().Unwrap().ToHex(),
@@ -330,9 +325,7 @@ func (s *Server) PublishOutputMetadata(outputID iotago.OutputID, metadata *inx.O
 		return
 	}
 
-	if hasOutputMetadataTopicSubscriber {
-		s.sendMessageOnTopic(outputMetadataTopic, jsonPayload)
-	}
+	s.sendMessageOnTopic(outputMetadataTopic, jsonPayload)
 }
 
 func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent) {
