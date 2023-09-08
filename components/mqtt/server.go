@@ -414,7 +414,7 @@ func (s *Server) publishLatestCommitmentTopic() {
 	s.LogDebug("publishLatestCommitmentTopic")
 	latest, err := s.NodeBridge.LatestCommitment()
 	if err != nil {
-		s.LogError("failed to retrieve latest commitment")
+		s.LogErrorf("failed to retrieve latest commitment: %v", err)
 		return
 	}
 
@@ -425,13 +425,13 @@ func (s *Server) publishLatestCommitmentInfoTopic() {
 	s.LogDebug("publishLatestCommitmentInfoTopic")
 	latest, err := s.NodeBridge.LatestCommitment()
 	if err != nil {
-		s.LogError("failed to retrieve latest commitment")
+		s.LogErrorf("failed to retrieve latest commitment: %v", err)
 		return
 	}
 
 	id, err := latest.ID()
 	if err != nil {
-		s.LogError("failed to retrieve latest commitment")
+		s.LogErrorf("failed to retrieve latest commitment: %v", err)
 		return
 	}
 
@@ -445,13 +445,13 @@ func (s *Server) publishFinalizedCommitmentInfoTopic() {
 	s.LogDebug("publishFinalizedCommitmentInfoTopic")
 	finalized, err := s.NodeBridge.LatestFinalizedCommitment()
 	if err != nil {
-		s.LogError("failed to retrieve latest commitment")
+		s.LogErrorf("failed to retrieve latest commitment: %v", err)
 		return
 	}
 
 	id, err := finalized.ID()
 	if err != nil {
-		s.LogError("failed to retrieve latest finalized commitment")
+		s.LogErrorf("failed to retrieve latest finalized commitment: %v", err)
 		return
 	}
 
@@ -462,6 +462,7 @@ func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotag
 	s.LogDebugf("fetchAndPublishBlockMetadata: %s", blockID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadBlockMetadata(ctx, inx.NewBlockId(blockID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve block metadata %s: %v", blockID.ToHex(), err)
 		return
 	}
 	s.PublishBlockMetadata(resp)
@@ -471,6 +472,7 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 	s.LogDebugf("fetchAndPublishOutput: %s", outputID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve output %s: %v", outputID.ToHex(), err)
 		return
 	}
 	s.PublishOutput(ctx, iotago.SlotIndex(resp.GetOutput().GetSlotBooked()), resp.GetOutput(), false)
@@ -480,6 +482,7 @@ func (s *Server) fetchAndPublishOutputMetadata(ctx context.Context, outputID iot
 	s.LogDebugf("fetchAndPublishOutputMetadata: %s", outputID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadOutputMetadata(ctx, inx.NewOutputId(outputID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve output metadata %s :%v", outputID.ToHex(), err)
 		return
 	}
 	s.PublishOutputMetadata(outputID, resp)
@@ -492,6 +495,7 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve output of transaction %s :%v", transactionID.ToHex(), err)
 		return
 	}
 
@@ -505,6 +509,7 @@ func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Contex
 	s.LogDebugf("fetchAndPublishTransactionInclusionWithBlock: %s", transactionID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadBlock(ctx, inx.NewBlockId(blockID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve block %s :%v", blockID.ToHex(), err)
 		return
 	}
 	s.PublishTransactionIncludedBlock(transactionID, resp)
