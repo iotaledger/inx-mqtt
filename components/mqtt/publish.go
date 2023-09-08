@@ -270,7 +270,6 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 }
 
 func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, publishOnAllTopics bool) {
-	// get api by verson or ledgerIndex?
 	api := s.NodeBridge.APIProvider().CurrentAPI()
 	iotaOutput, err := output.UnwrapOutput(api)
 	if err != nil {
