@@ -124,8 +124,8 @@ func (s *Server) Run(ctx context.Context) {
 			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoLatest, c.CommitmentID)
 			s.PublishRawCommitmentOnTopic(topicCommitments, c.Commitment)
 		}).Unhook,
-		s.NodeBridge.Events.LatestFinalizedSlotChanged.Hook(func(c *nodebridge.Commitment) {
-			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, c.CommitmentID)
+		s.NodeBridge.Events.LatestFinalizedSlotChanged.Hook(func(cID iotago.CommitmentID) {
+			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, cID)
 		}).Unhook,
 	)
 
@@ -446,21 +446,8 @@ func (s *Server) publishLatestCommitmentInfoTopic() {
 
 func (s *Server) publishFinalizedCommitmentInfoTopic() {
 	s.LogDebug("publishFinalizedCommitmentInfoTopic")
-	finalized, err := s.NodeBridge.LatestFinalizedCommitment()
-	if err != nil {
-		s.LogErrorf("failed to retrieve latest commitment: %v", err)
-
-		return
-	}
-
-	id, err := finalized.ID()
-	if err != nil {
-		s.LogErrorf("failed to retrieve latest finalized commitment: %v", err)
-
-		return
-	}
-
-	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, id)
+	finalized := s.NodeBridge.LatestFinalizedCommitmentID()
+	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, finalized)
 }
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
