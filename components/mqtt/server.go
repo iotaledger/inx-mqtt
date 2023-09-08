@@ -122,7 +122,7 @@ func (s *Server) Run(ctx context.Context) {
 	unhookNodeBridgeEvents := lo.Batch(
 		s.NodeBridge.Events.LatestCommittedSlotChanged.Hook(func(c *nodebridge.Commitment) {
 			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoLatest, c.CommitmentID)
-			s.PublishCommitmentOnTopic(topicCommitments, c.Commitment)
+			s.PublishRawCommitmentOnTopic(topicCommitments, c.Commitment)
 		}).Unhook,
 		s.NodeBridge.Events.LatestFinalizedSlotChanged.Hook(func(c *nodebridge.Commitment) {
 			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, c.CommitmentID)
@@ -417,7 +417,7 @@ func (s *Server) publishLatestCommitmentTopic() {
 		s.LogError("failed to retrieve latest commitment")
 	}
 
-	s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, latest)
+	s.PublishRawCommitmentOnTopic(topicCommitmentInfoLatest, latest)
 }
 
 func (s *Server) publishLatestCommitmentInfoTopic() {
@@ -435,7 +435,7 @@ func (s *Server) publishLatestCommitmentInfoTopic() {
 	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoLatest, id)
 
 	s.LogDebug("publishLatestCommitmentTopic")
-	s.PublishCommitmentOnTopic(topicCommitmentInfoLatest, latest)
+	s.PublishRawCommitmentOnTopic(topicCommitmentInfoLatest, latest)
 }
 
 func (s *Server) publishFinalizedCommitmentInfoTopic() {

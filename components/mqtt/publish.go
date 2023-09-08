@@ -43,7 +43,7 @@ func (s *Server) PublishOnTopic(topic string, payload interface{}) {
 	s.sendMessageOnTopic(topic, jsonPayload)
 }
 
-func (s *Server) PublishCommitmentOnTopic(topic string, commitment *iotago.Commitment) {
+func (s *Server) PublishRawCommitmentOnTopic(topic string, commitment *iotago.Commitment) {
 	apiForVersion, err := s.NodeBridge.APIProvider().APIForVersion(commitment.Version)
 	if err != nil {
 		return
