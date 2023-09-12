@@ -157,7 +157,7 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	}
 }
 
-func payloadForOutput(api iotago.API, output *inx.LedgerOutput, iotaOutput iotago.Output) *outputPayload {
+func payloadForOutput(api iotago.API, iotaOutput iotago.Output) *outputPayload {
 	rawOutputJSON, err := api.JSONEncode(iotaOutput)
 	if err != nil {
 		return nil
@@ -170,8 +170,8 @@ func payloadForOutput(api iotago.API, output *inx.LedgerOutput, iotaOutput iotag
 	}
 }
 
-func payloadForSpent(api iotago.API, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
-	return payloadForOutput(api, spent.GetOutput(), iotaOutput)
+func payloadForSpent(api iotago.API, iotaOutput iotago.Output) *outputPayload {
+	return payloadForOutput(api, iotaOutput)
 }
 
 func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.Output, payloadFunc func() interface{}) {
@@ -279,7 +279,7 @@ func (s *Server) PublishOutput(ctx context.Context, output *inx.LedgerOutput, pu
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			payload = payloadForOutput(api, output, iotaOutput)
+			payload = payloadForOutput(api, iotaOutput)
 		}
 
 		return payload
@@ -338,7 +338,7 @@ func (s *Server) PublishSpent(spent *inx.LedgerSpent) {
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			payload = payloadForSpent(api, spent, iotaOutput)
+			payload = payloadForSpent(api, iotaOutput)
 		}
 
 		return payload
