@@ -157,7 +157,7 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	}
 }
 
-func payloadForOutput(api iotago.API, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, iotaOutput iotago.Output) *outputPayload {
+func payloadForOutput(api iotago.API, output *inx.LedgerOutput, iotaOutput iotago.Output) *outputPayload {
 	rawOutputJSON, err := api.JSONEncode(iotaOutput)
 	if err != nil {
 		return nil
@@ -170,8 +170,8 @@ func payloadForOutput(api iotago.API, ledgerIndex iotago.SlotIndex, output *inx.
 	}
 }
 
-func payloadForSpent(api iotago.API, ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
-	return payloadForOutput(api, ledgerIndex, spent.GetOutput(), iotaOutput)
+func payloadForSpent(api iotago.API, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
+	return payloadForOutput(api, spent.GetOutput(), iotaOutput)
 }
 
 func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.Output, payloadFunc func() interface{}) {
@@ -269,7 +269,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 	}
 }
 
-func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, publishOnAllTopics bool) {
+func (s *Server) PublishOutput(ctx context.Context, output *inx.LedgerOutput, publishOnAllTopics bool) {
 	api := s.NodeBridge.APIProvider().CurrentAPI()
 	iotaOutput, err := output.UnwrapOutput(api)
 	if err != nil {
@@ -279,7 +279,7 @@ func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			payload = payloadForOutput(api, ledgerIndex, output, iotaOutput)
+			payload = payloadForOutput(api, output, iotaOutput)
 		}
 
 		return payload
@@ -328,7 +328,7 @@ func (s *Server) PublishOutputMetadata(outputID iotago.OutputID, metadata *inx.O
 	s.sendMessageOnTopic(outputMetadataTopic, jsonPayload)
 }
 
-func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent) {
+func (s *Server) PublishSpent(spent *inx.LedgerSpent) {
 	api := s.NodeBridge.APIProvider().CurrentAPI()
 	iotaOutput, err := spent.GetOutput().UnwrapOutput(api)
 	if err != nil {
@@ -338,7 +338,7 @@ func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpe
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			payload = payloadForSpent(api, ledgerIndex, spent, iotaOutput)
+			payload = payloadForSpent(api, spent, iotaOutput)
 		}
 
 		return payload

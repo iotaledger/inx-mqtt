@@ -375,7 +375,6 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 		return err
 	}
 
-	var latestIndex iotago.SlotIndex
 	for {
 		payload, err := stream.Recv()
 		if err != nil {
@@ -388,21 +387,15 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 		if ctx.Err() != nil {
 			break
 		}
+
 		switch op := payload.GetOp().(type) {
-
-		//nolint:nosnakecase // grpc uses underscores
-		case *inx.LedgerUpdate_BatchMarker:
-			if op.BatchMarker.GetMarkerType() == inx.LedgerUpdate_Marker_BEGIN {
-				latestIndex = iotago.SlotIndex(op.BatchMarker.GetSlot())
-			}
-
 		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Consumed:
-			s.PublishSpent(latestIndex, op.Consumed)
+			s.PublishSpent(op.Consumed)
 
 		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Created:
-			s.PublishOutput(ctx, latestIndex, op.Created, true)
+			s.PublishOutput(ctx, op.Created, true)
 		}
 	}
 
@@ -469,7 +462,7 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 
 		return
 	}
-	s.PublishOutput(ctx, iotago.SlotIndex(resp.GetOutput().GetSlotBooked()), resp.GetOutput(), false)
+	s.PublishOutput(ctx, resp.GetOutput(), false)
 }
 
 func (s *Server) fetchAndPublishOutputMetadata(ctx context.Context, outputID iotago.OutputID) {
