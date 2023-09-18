@@ -308,6 +308,11 @@ func (s *Server) PublishOutput(ctx context.Context, output *inx.LedgerOutput, pu
 
 func (s *Server) PublishOutputMetadata(outputID iotago.OutputID, metadata *inx.OutputMetadata) {
 	outputMetadataTopic := strings.ReplaceAll(topicOutputsMetadata, parameterOutputID, outputID.ToHex())
+	hasOutputMetadataTopicSubscriber := s.MQTTBroker.HasSubscribers(outputMetadataTopic)
+
+	if !hasOutputMetadataTopicSubscriber {
+		return
+	}
 
 	response := &outputMetadataPayload{
 		BlockID:              metadata.GetBlockId().Unwrap().ToHex(),
