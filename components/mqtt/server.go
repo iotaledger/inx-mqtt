@@ -199,11 +199,6 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 			if outputID := outputIDFromOutputsTopic(topic); outputID != emptyOutputID {
 				go s.fetchAndPublishOutput(ctx, outputID)
 			}
-
-		case strings.HasPrefix(topic, "output-metadata/"):
-			if outputID := outputIDFromOutputMetadataTopic(topic); outputID != emptyOutputID {
-				go s.fetchAndPublishOutputMetadata(ctx, outputID)
-			}
 		}
 	}
 }
@@ -369,12 +364,12 @@ func (s *Server) listenToConfirmedBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
-
 	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(ctx, &inx.SlotRangeRequest{})
 	if err != nil {
 		return err
 	}
 
+	var latestIndex iotago.SlotIndex
 	for {
 		payload, err := stream.Recv()
 		if err != nil {
@@ -390,12 +385,18 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 
 		switch op := payload.GetOp().(type) {
 		//nolint:nosnakecase // grpc uses underscores
+		case *inx.LedgerUpdate_BatchMarker:
+			if op.BatchMarker.GetMarkerType() == inx.LedgerUpdate_Marker_BEGIN {
+				latestIndex = iotago.SlotIndex(op.BatchMarker.Slot)
+			}
+
+		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Consumed:
-			s.PublishSpent(op.Consumed)
+			s.PublishSpent(latestIndex, op.Consumed)
 
 		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_Created:
-			s.PublishOutput(ctx, op.Created, true)
+			s.PublishOutput(ctx, latestIndex, op.Created, true)
 		}
 	}
 
@@ -462,18 +463,7 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 
 		return
 	}
-	s.PublishOutput(ctx, resp.GetOutput(), false)
-}
-
-func (s *Server) fetchAndPublishOutputMetadata(ctx context.Context, outputID iotago.OutputID) {
-	s.LogDebugf("fetchAndPublishOutputMetadata: %s", outputID.ToHex())
-	resp, err := s.NodeBridge.Client().ReadOutputMetadata(ctx, inx.NewOutputId(outputID))
-	if err != nil {
-		s.LogErrorf("failed to retrieve output metadata %s :%v", outputID.ToHex(), err)
-
-		return
-	}
-	s.PublishOutputMetadata(outputID, resp)
+	s.PublishOutput(ctx, resp.GetLatestCommitmentId().Unwrap().Index(), resp.GetOutput(), false)
 }
 
 func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID iotago.TransactionID) {

@@ -42,18 +42,24 @@ type outputMetadataPayload struct {
 	OutputIndex uint16 `json:"outputIndex"`
 	// Whether this output is spent.
 	Spent bool `json:"isSpent"`
+	// The slot index at which the output was spent.
+	SpentSlot uint64 `json:"spentSlot,omitempty"`
 	// The commitment ID at which this output was spent.
 	CommitmentIDSpent string `json:"commitmentIdSpent,omitempty"`
 	// The transaction this output was spent with.
 	TransactionIDSpent string `json:"transactionIdSpent,omitempty"`
+	// The slot index at which the output was booked.
+	IncludedSlot uint64 `json:"includedSlot,omitempty"`
 	// The commitment ID at which this output was booked into the ledger.
 	IncludedCommitmentID string `json:"includedCommitmentId"`
-	// The latest commitment ID of the node.
-	LatestCommitmentID string `json:"latestCommitmentId"`
+	// The current ledger index of the node.
+	LedgerIndex uint64 `json:"ledgerIndex"`
 }
 
 // outputPayload defines the payload of the output topics.
 type outputPayload struct {
+	// The metadata of the output.
+	Metadata *outputMetadataPayload `json:"metadata"`
 	// The output in its serialized form.
 	RawOutput *json.RawMessage `json:"output"`
 }

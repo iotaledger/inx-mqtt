@@ -35,8 +35,6 @@ const (
 	topicFoundryOutputs                          = "outputs/foundry/" + parameterFoundryID                                    // outputPayload
 	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/" + parameterCondition + "/" + parameterAddress            // outputPayload
 	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/" + parameterCondition + "/" + parameterAddress + "/spent" // outputPayload
-
-	topicOutputsMetadata = "output-metadata/" + parameterOutputID // outputMetadataPayload
 )
 
 type unlockCondition string
