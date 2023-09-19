@@ -175,7 +175,7 @@ func payloadForOutput(ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, io
 	}
 }
 
-func payloadForSpent(api iotago.API, ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent, iotaOutputJSON []byte) *outputPayload {
+func payloadForSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent, iotaOutputJSON []byte) *outputPayload {
 	payload := payloadForOutput(ledgerIndex, spent.GetOutput(), iotaOutputJSON)
 	if payload != nil {
 		payload.Metadata.Spent = true
@@ -337,7 +337,7 @@ func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpe
 			if err != nil {
 				return nil
 			}
-			payload = payloadForSpent(api, ledgerIndex, spent, rawOutputJSON)
+			payload = payloadForSpent(ledgerIndex, spent, rawOutputJSON)
 		}
 
 		return payload
