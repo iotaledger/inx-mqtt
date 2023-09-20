@@ -157,9 +157,14 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	}
 }
 
-func payloadForOutput(ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, iotaOutputJSON []byte) *outputPayload {
+func payloadForOutput(ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, iotaOutput iotago.Output, api iotago.API) *outputPayload {
+	rawOutputJSON, err := api.JSONEncode(iotaOutput)
+	if err != nil {
+		return nil
+	}
+
+	rawRawOutputJSON := json.RawMessage(rawOutputJSON)
 	outputID := output.GetOutputId().Unwrap()
-	rawRawOutputJSON := json.RawMessage(iotaOutputJSON)
 
 	return &outputPayload{
 		Metadata: &outputMetadataPayload{
@@ -175,8 +180,8 @@ func payloadForOutput(ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, io
 	}
 }
 
-func payloadForSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent, iotaOutputJSON []byte) *outputPayload {
-	payload := payloadForOutput(ledgerIndex, spent.GetOutput(), iotaOutputJSON)
+func payloadForSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent, iotaOutput iotago.Output, api iotago.API) *outputPayload {
+	payload := payloadForOutput(ledgerIndex, spent.GetOutput(), iotaOutput, api)
 	if payload != nil {
 		payload.Metadata.Spent = true
 		payload.Metadata.SpentSlot = spent.GetSlotSpent()
@@ -292,11 +297,7 @@ func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			rawOutputJSON, err := api.JSONEncode(iotaOutput)
-			if err != nil {
-				return nil
-			}
-			payload = payloadForOutput(ledgerIndex, output, rawOutputJSON)
+			payload = payloadForOutput(ledgerIndex, output, iotaOutput, api)
 		}
 
 		return payload
@@ -333,11 +334,7 @@ func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpe
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			rawOutputJSON, err := api.JSONEncode(iotaOutput)
-			if err != nil {
-				return nil
-			}
-			payload = payloadForSpent(ledgerIndex, spent, rawOutputJSON)
+			payload = payloadForSpent(ledgerIndex, spent, iotaOutput, api)
 		}
 
 		return payload
