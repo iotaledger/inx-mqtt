@@ -157,7 +157,7 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 	}
 }
 
-func payloadForOutput(ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, iotaOutput iotago.Output, api iotago.API) *outputPayload {
+func payloadForOutput(api iotago.API, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, iotaOutput iotago.Output) *outputPayload {
 	rawOutputJSON, err := api.JSONEncode(iotaOutput)
 	if err != nil {
 		return nil
@@ -180,8 +180,8 @@ func payloadForOutput(ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, io
 	}
 }
 
-func payloadForSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent, iotaOutput iotago.Output, api iotago.API) *outputPayload {
-	payload := payloadForOutput(ledgerIndex, spent.GetOutput(), iotaOutput, api)
+func payloadForSpent(api iotago.API, ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
+	payload := payloadForOutput(api, ledgerIndex, spent.GetOutput(), iotaOutput)
 	if payload != nil {
 		payload.Metadata.Spent = true
 		payload.Metadata.SpentSlot = spent.GetSlotSpent()
@@ -297,7 +297,7 @@ func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			payload = payloadForOutput(ledgerIndex, output, iotaOutput, api)
+			payload = payloadForOutput(api, ledgerIndex, output, iotaOutput)
 		}
 
 		return payload
@@ -334,7 +334,7 @@ func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpe
 	var payload *outputPayload
 	payloadFunc := func() interface{} {
 		if payload == nil {
-			payload = payloadForSpent(ledgerIndex, spent, iotaOutput, api)
+			payload = payloadForSpent(api, ledgerIndex, spent, iotaOutput)
 		}
 
 		return payload
