@@ -12,9 +12,9 @@ const (
 	parameterCondition     = "{condition}"
 	parameterAddress       = "{address}"
 
-	//topicMilestoneInfoLatest    = "milestone-info/latest"    // milestoneInfoPayload
-	//topicMilestoneInfoConfirmed = "milestone-info/confirmed" // milestoneInfoPayload
-	//topicMilestones             = "milestones"               // iotago.Milestone serialized => []bytes
+	topicCommitmentInfoLatest    = "commitment-info/latest"    // commitmentInfoPayload
+	topicCommitmentInfoFinalized = "commitment-info/finalized" // commitmentInfoPayload
+	topicCommitments             = "commitments"               // iotago.Commitment serialized => []bytes
 
 	topicBlocks                         = "blocks"                                         // iotago.Block serialized => []bytes
 	topicBlocksTransaction              = "blocks/transaction"                             // iotago.Block serialized => []bytes
@@ -25,14 +25,13 @@ const (
 
 	topicTransactionsIncludedBlock = "transactions/" + parameterTransactionID + "/included-block" // iotago.Block serialized => []bytes
 
-	topicBlockMetadata           = "block-metadata/" + parameterBlockID // blockMetadataPayload	// renotify if "reattach" or "promote" changes? => add new INX event?
-	topicBlockMetadataReferenced = "block-metadata/referenced"          // blockMetadataPayload
-
-	topicTipScoreUpdates = "tip-score-updates" // blockMetadataPayload
+	topicBlockMetadata          = "block-metadata/" + parameterBlockID // blockMetadataPayload
+	topicBlockMetadataAccepted  = "block-metadata/accepted"            // blockMetadataPayload
+	topicBlockMetadataConfirmed = "block-metadata/confirmed"           // blockMetadataPayload
 
 	topicOutputs                                 = "outputs/" + parameterOutputID                                             // outputPayload
 	topicNFTOutputs                              = "outputs/nft/" + parameterNFTID                                            // outputPayload
-	topicAliasOutputs                            = "outputs/alias/" + parameterAccountID                                      // outputPayload
+	topicAccountOutputs                          = "outputs/account/" + parameterAccountID                                    // outputPayload
 	topicFoundryOutputs                          = "outputs/foundry/" + parameterFoundryID                                    // outputPayload
 	topicOutputsByUnlockConditionAndAddress      = "outputs/unlock/" + parameterCondition + "/" + parameterAddress            // outputPayload
 	topicSpentOutputsByUnlockConditionAndAddress = "outputs/unlock/" + parameterCondition + "/" + parameterAddress + "/spent" // outputPayload

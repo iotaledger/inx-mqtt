@@ -23,11 +23,10 @@ import (
 )
 
 const (
-	grpcListenToBlocks           = "INX.ListenToBlocks"
-	grpcListenToSolidBlocks      = "INX.ListenToSolidBlocks"
-	grpcListenToReferencedBlocks = "INX.ListenToReferencedBlocks"
-	grpcListenToLedgerUpdates    = "INX.ListenToLedgerUpdates"
-	grpcListenToTipScoreUpdates  = "INX.ListenToTipScoreUpdates"
+	grpcListenToBlocks          = "INX.ListenToBlocks"
+	grpcListenToAcceptedBlocks  = "INX.ListenToAcceptedBlocks"
+	grpcListenToConfirmedBlocks = "INX.ListenToConfirmedBlocks"
+	grpcListenToLedgerUpdates   = "INX.ListenToLedgerUpdates"
 )
 
 const (
@@ -120,23 +119,22 @@ func (s *Server) Run(ctx context.Context) {
 	}
 
 	// register node bridge events
-	/*
-		unhookNodeBridgeEvents := lo.Batch(
-			s.NodeBridge.Events.LatestMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
-				s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, ms)
-			}).Unhook,
-			s.NodeBridge.Events.ConfirmedMilestoneChanged.Hook(func(ms *nodebridge.Milestone) {
-				s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, ms)
-			}).Unhook,
-		)
-	*/
+	unhookNodeBridgeEvents := lo.Batch(
+		s.NodeBridge.Events.LatestCommittedSlotChanged.Hook(func(c *nodebridge.Commitment) {
+			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoLatest, c.CommitmentID)
+			s.PublishRawCommitmentOnTopic(topicCommitments, c.Commitment)
+		}).Unhook,
+		s.NodeBridge.Events.LatestFinalizedSlotChanged.Hook(func(cID iotago.CommitmentID) {
+			s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, cID)
+		}).Unhook,
+	)
 
 	s.LogInfo("Starting MQTT Broker ... done")
 	<-ctx.Done()
 
 	s.LogInfo("Stopping MQTT Broker ...")
 	unhookBrokerEvents()
-	//unhookNodeBridgeEvents()
+	unhookNodeBridgeEvents()
 
 	if s.brokerOptions.WebsocketEnabled {
 		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
@@ -168,24 +166,22 @@ func (s *Server) onClientDisconnect(clientID string) {
 func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic string) {
 	s.LogDebugf("%s subscribed to %s", clientID, topic)
 	switch topic {
-	/*
-		case topicMilestoneInfoLatest:
-			go s.publishLatestMilestoneTopic()
-		case topicMilestoneInfoConfirmed:
-			go s.publishConfirmedMilestoneTopic()
-	*/
 
-	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
+	case topicCommitmentInfoLatest:
+		go s.publishLatestCommitmentInfoTopic()
+	case topicCommitmentInfoFinalized:
+		go s.publishFinalizedCommitmentInfoTopic()
+	case topicCommitments:
+		go s.publishLatestCommitmentTopic()
+
+	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData:
 		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
-
-	case topicTipScoreUpdates:
-		s.startListenIfNeeded(ctx, grpcListenToTipScoreUpdates, s.listenToTipScoreUpdates)
 
 	default:
 		switch {
 		case strings.HasPrefix(topic, "block-metadata/"):
-			s.startListenIfNeeded(ctx, grpcListenToSolidBlocks, s.listenToSolidBlocks)
-			s.startListenIfNeeded(ctx, grpcListenToReferencedBlocks, s.listenToReferencedBlocks)
+			s.startListenIfNeeded(ctx, grpcListenToAcceptedBlocks, s.listenToAcceptedBlocks)
+			s.startListenIfNeeded(ctx, grpcListenToConfirmedBlocks, s.listenToConfirmedBlocks)
 
 			if blockID := blockIDFromBlockMetadataTopic(topic); !blockID.Empty() {
 				go s.fetchAndPublishBlockMetadata(ctx, blockID)
@@ -210,17 +206,14 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 	s.LogDebugf("%s unsubscribed from %s", clientID, topic)
 	switch topic {
-	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData: //, topicMilestones:
+	case topicBlocks, topicBlocksTransaction, topicBlocksTransactionTaggedData, topicBlocksTaggedData:
 		s.stopListenIfNeeded(grpcListenToBlocks)
-
-	case topicTipScoreUpdates:
-		s.stopListenIfNeeded(grpcListenToTipScoreUpdates)
 
 	default:
 		switch {
 		case strings.HasPrefix(topic, "block-metadata/"):
-			s.stopListenIfNeeded(grpcListenToSolidBlocks)
-			s.stopListenIfNeeded(grpcListenToReferencedBlocks)
+			s.stopListenIfNeeded(grpcListenToAcceptedBlocks)
+			s.stopListenIfNeeded(grpcListenToConfirmedBlocks)
 
 		case strings.HasPrefix(topic, "blocks/") && strings.Contains(topic, "tagged-data"):
 			s.stopListenIfNeeded(grpcListenToBlocks)
@@ -318,9 +311,9 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) listenToSolidBlocks(ctx context.Context) error {
+func (s *Server) listenToAcceptedBlocks(ctx context.Context) error {
 
-	stream, err := s.NodeBridge.Client().ListenToSolidBlocks(ctx, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToAcceptedBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -344,35 +337,9 @@ func (s *Server) listenToSolidBlocks(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) listenToReferencedBlocks(ctx context.Context) error {
+func (s *Server) listenToConfirmedBlocks(ctx context.Context) error {
 
-	stream, err := s.NodeBridge.Client().ListenToReferencedBlocks(ctx, &inx.NoParams{})
-	if err != nil {
-		return err
-	}
-
-	for {
-		blockMetadata, err := stream.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) || status.Code(err) == codes.Canceled {
-				break
-			}
-
-			return err
-		}
-		if ctx.Err() != nil {
-			break
-		}
-		s.PublishBlockMetadata(blockMetadata)
-	}
-
-	//nolint:nilerr // false positive
-	return nil
-}
-
-func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
-
-	stream, err := s.NodeBridge.Client().ListenToTipScoreUpdates(ctx, &inx.NoParams{})
+	stream, err := s.NodeBridge.Client().ListenToConfirmedBlocks(ctx, &inx.NoParams{})
 	if err != nil {
 		return err
 	}
@@ -397,13 +364,12 @@ func (s *Server) listenToTipScoreUpdates(ctx context.Context) error {
 }
 
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
-
-	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(ctx, &inx.MilestoneRangeRequest{})
+	stream, err := s.NodeBridge.Client().ListenToLedgerUpdates(ctx, &inx.SlotRangeRequest{})
 	if err != nil {
 		return err
 	}
 
-	var latestIndex iotago.MilestoneIndex
+	var latestIndex iotago.SlotIndex
 	for {
 		payload, err := stream.Recv()
 		if err != nil {
@@ -416,12 +382,12 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 		if ctx.Err() != nil {
 			break
 		}
-		switch op := payload.GetOp().(type) {
 
+		switch op := payload.GetOp().(type) {
 		//nolint:nosnakecase // grpc uses underscores
 		case *inx.LedgerUpdate_BatchMarker:
 			if op.BatchMarker.GetMarkerType() == inx.LedgerUpdate_Marker_BEGIN {
-				latestIndex = op.BatchMarker.GetMilestoneIndex()
+				latestIndex = iotago.SlotIndex(op.BatchMarker.Slot)
 			}
 
 		//nolint:nosnakecase // grpc uses underscores
@@ -438,28 +404,52 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	return nil
 }
 
-/*
-func (s *Server) publishLatestMilestoneTopic() {
-	s.LogDebug("publishLatestMilestoneTopic")
-	latest, err := s.NodeBridge.LatestMilestone()
-	if err == nil {
-		s.PublishMilestoneOnTopic(topicMilestoneInfoLatest, latest)
+func (s *Server) publishLatestCommitmentTopic() {
+	s.LogDebug("publishLatestCommitmentTopic")
+	latest, err := s.NodeBridge.LatestCommitment()
+	if err != nil {
+		s.LogErrorf("failed to retrieve latest commitment: %v", err)
+
+		return
 	}
+
+	s.PublishRawCommitmentOnTopic(topicCommitmentInfoLatest, latest)
 }
 
-func (s *Server) publishConfirmedMilestoneTopic() {
-	s.LogDebug("publishConfirmedMilestoneTopic")
-	confirmed, err := s.NodeBridge.ConfirmedMilestone()
-	if err == nil {
-		s.PublishMilestoneOnTopic(topicMilestoneInfoConfirmed, confirmed)
+func (s *Server) publishLatestCommitmentInfoTopic() {
+	s.LogDebug("publishLatestCommitmentInfoTopic")
+	latest, err := s.NodeBridge.LatestCommitment()
+	if err != nil {
+		s.LogErrorf("failed to retrieve latest commitment: %v", err)
+
+		return
 	}
+
+	id, err := latest.ID()
+	if err != nil {
+		s.LogErrorf("failed to retrieve latest commitment: %v", err)
+
+		return
+	}
+
+	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoLatest, id)
+
+	s.LogDebug("publishLatestCommitmentTopic")
+	s.PublishRawCommitmentOnTopic(topicCommitmentInfoLatest, latest)
 }
-*/
+
+func (s *Server) publishFinalizedCommitmentInfoTopic() {
+	s.LogDebug("publishFinalizedCommitmentInfoTopic")
+	finalized := s.NodeBridge.LatestFinalizedCommitmentID()
+	s.PublishCommitmentInfoOnTopic(topicCommitmentInfoFinalized, finalized)
+}
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
 	s.LogDebugf("fetchAndPublishBlockMetadata: %s", blockID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadBlockMetadata(ctx, inx.NewBlockId(blockID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve block metadata %s: %v", blockID.ToHex(), err)
+
 		return
 	}
 	s.PublishBlockMetadata(resp)
@@ -469,9 +459,11 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 	s.LogDebugf("fetchAndPublishOutput: %s", outputID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve output %s: %v", outputID.ToHex(), err)
+
 		return
 	}
-	s.PublishOutput(ctx, resp.GetLedgerIndex(), resp.GetOutput(), false)
+	s.PublishOutput(ctx, resp.GetLatestCommitmentId().Unwrap().Index(), resp.GetOutput(), false)
 }
 
 func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID iotago.TransactionID) {
@@ -481,6 +473,8 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 
 	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve output of transaction %s :%v", transactionID.ToHex(), err)
+
 		return
 	}
 
@@ -494,6 +488,8 @@ func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Contex
 	s.LogDebugf("fetchAndPublishTransactionInclusionWithBlock: %s", transactionID.ToHex())
 	resp, err := s.NodeBridge.Client().ReadBlock(ctx, inx.NewBlockId(blockID))
 	if err != nil {
+		s.LogErrorf("failed to retrieve block %s :%v", blockID.ToHex(), err)
+
 		return
 	}
 	s.PublishTransactionIncludedBlock(transactionID, resp)

@@ -44,8 +44,8 @@ require (
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20230829152614-7afc7a4d89b3 // indirect
 	github.com/iotaledger/hive.go/stringify v0.0.0-20230829152614-7afc7a4d89b3 // indirect
 	github.com/iotaledger/hive.go/web v0.0.0-20230629181801-64c530ff9d15 // indirect
-	github.com/iotaledger/inx-app v1.0.0-rc.3.0.20230829161228-3f4eb50a4d14 // indirect
-	github.com/iotaledger/inx/go v1.0.0-rc.2.0.20230829160617-69b96c7c9f9b // indirect
+	github.com/iotaledger/inx-app v1.0.0-rc.3.0.20230906120020-eb566076caf6 // indirect
+	github.com/iotaledger/inx/go v1.0.0-rc.2.0.20230904035052-54cba612a7bb // indirect
 	github.com/iotaledger/iota.go/v4 v4.0.0-20230829160021-46cad51e89d1 // indirect
 	github.com/knadh/koanf v1.5.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
