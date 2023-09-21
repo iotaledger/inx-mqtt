@@ -212,8 +212,8 @@ github.com/iotaledger/inx-app v1.0.0-rc.3.0.20230919065227-618931c246c5 h1:7GuYO
 github.com/iotaledger/inx-app v1.0.0-rc.3.0.20230919065227-618931c246c5/go.mod h1:luLlwdZT26MqUWBbiEOYxBwYLVrfz+65D+Tme84+Slw=
 github.com/iotaledger/inx/go v1.0.0-rc.2.0.20230918132810-48814818bff9 h1:BJb6+fF7zTyrbKQY3JG1Hiw6klONR4anwCFOcNdWu9o=
 github.com/iotaledger/inx/go v1.0.0-rc.2.0.20230918132810-48814818bff9/go.mod h1:B7gyJP6GshCSlEmY3CxEk5TZdsMs3UNz5U92hkFDdMs=
-github.com/iotaledger/iota.go/v4 v4.0.0-20230829160021-46cad51e89d1 h1:10hGLm62uQ2V2HgqCR6FV0fvgpXo5GqlL/SIJ/t4VmY=
-github.com/iotaledger/iota.go/v4 v4.0.0-20230829160021-46cad51e89d1/go.mod h1:MM3RLtTEsfT6Wh0EhpgmzVO/HM0/NOw+E7+mnGTnyA0=
+github.com/iotaledger/iota.go/v4 v4.0.0-20230921110244-f4f25eb27e05 h1:arct4Q+cCFs6xaUS6lYt8hd1NFT+w1L5qoXGPC5ZYtU=
+github.com/iotaledger/iota.go/v4 v4.0.0-20230921110244-f4f25eb27e05/go.mod h1:DWCa+mXRTGWBV0EHVuvToUxAEcICe2Pab9hBlxBamKo=
 github.com/jinzhu/copier v0.3.5 h1:GlvfUwHk62RokgqVNvYsku0TATCF7bAHVwEXoBh3iJg=
 github.com/jinzhu/copier v0.3.5/go.mod h1:DfbEm0FYsaqBcKcFuvmOZb218JkPGtvSHsKg8S8hyyg=
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
