@@ -208,8 +208,6 @@ github.com/iotaledger/hive.go/stringify v0.0.0-20230912172434-dc477e1f5140 h1:ZG
 github.com/iotaledger/hive.go/stringify v0.0.0-20230912172434-dc477e1f5140/go.mod h1:FTo/UWzNYgnQ082GI9QVM9HFDERqf9rw9RivNpqrnTs=
 github.com/iotaledger/hive.go/web v0.0.0-20230912172434-dc477e1f5140 h1:VkeWPMafzf6DMMhi9Ef3ZI9LQNIwsKVmuY+Gv5JFRBc=
 github.com/iotaledger/hive.go/web v0.0.0-20230912172434-dc477e1f5140/go.mod h1:RVlTa6pmKvwpQZAhVKFaU9vNA13iognNVA63zdE6i6U=
-github.com/iotaledger/inx-app v1.0.0-rc.3.0.20230919065227-618931c246c5 h1:7GuYO/SI/mZnXwv7QBYwn2NWjr4OF/Re+aSzmwx+CT0=
-github.com/iotaledger/inx-app v1.0.0-rc.3.0.20230919065227-618931c246c5/go.mod h1:luLlwdZT26MqUWBbiEOYxBwYLVrfz+65D+Tme84+Slw=
 github.com/iotaledger/inx-app v1.0.0-rc.3.0.20230921141002-9dba81c178ad h1:/H5d0++V5XJkpBaVzpRokcoaLdNlQHxNOyIUeUf3SHQ=
 github.com/iotaledger/inx-app v1.0.0-rc.3.0.20230921141002-9dba81c178ad/go.mod h1:gtKfI1FB/SX8kwFuyRg2zKfE2S+4qnri4yrH8SnjZYM=
 github.com/iotaledger/inx/go v1.0.0-rc.2.0.20230918132810-48814818bff9 h1:BJb6+fF7zTyrbKQY3JG1Hiw6klONR4anwCFOcNdWu9o=
@@ -534,8 +532,8 @@ google.golang.org/grpc v1.27.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8
 google.golang.org/grpc v1.29.1/go.mod h1:itym6AZVZYACWQqET3MqgPpjcuV5QH3BxFS3IjizoKk=
 google.golang.org/grpc v1.33.1/go.mod h1:fr5YgcSWrqhRRxogOsw7RzIpsmvOZ6IcH4kBYTpR3n0=
 google.golang.org/grpc v1.38.0/go.mod h1:NREThFqKR1f3iQ6oBuvc5LadQuXVGo9rkm5ZGrQdJfM=
-google.golang.org/grpc v1.57.0 h1:kfzNeI/klCGD2YPMUlaGNT3pxvYfga7smW3Vth8Zsiw=
-google.golang.org/grpc v1.57.0/go.mod h1:Sd+9RMTACXwmub0zcNY2c4arhtrbBYD1AUHI/dt16Mo=
+google.golang.org/grpc v1.58.3 h1:BjnpXut1btbtgN/6sp+brB2Kbm2LjNXnidYujAVbSoQ=
+google.golang.org/grpc v1.58.3/go.mod h1:tgX3ZQDlNJGU96V6yHh1T/JeoBQ2TXdr43YbYSsCJk0=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
 google.golang.org/protobuf v0.0.0-20200221191635-4d8936d0db64/go.mod h1:kwYJMbMJ01Woi6D6+Kah6886xMZcty6N08ah7+eCXa0=
 google.golang.org/protobuf v0.0.0-20200228230310-ab0ca4ff8a60/go.mod h1:cfTl7dwQJ+fmap5saPgwCLgHXTUD7jkjRqWcaiX5VyM=
