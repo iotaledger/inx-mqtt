@@ -200,42 +200,42 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 
 	address := unlockConditions.Address()
 	if address != nil {
-		addr := address.Address.Bech32(s.NodeBridge.APIProvider().LatestAPI().ProtocolParameters().Bech32HRP())
+		addr := address.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionAddress, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	storageReturn := unlockConditions.StorageDepositReturn()
 	if storageReturn != nil {
-		addr := storageReturn.ReturnAddress.Bech32(s.NodeBridge.APIProvider().LatestAPI().ProtocolParameters().Bech32HRP())
+		addr := storageReturn.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStorageReturn, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	expiration := unlockConditions.Expiration()
 	if expiration != nil {
-		addr := expiration.ReturnAddress.Bech32(s.NodeBridge.APIProvider().LatestAPI().ProtocolParameters().Bech32HRP())
+		addr := expiration.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionExpiration, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	stateController := unlockConditions.StateControllerAddress()
 	if stateController != nil {
-		addr := stateController.Address.Bech32(s.NodeBridge.APIProvider().LatestAPI().ProtocolParameters().Bech32HRP())
+		addr := stateController.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStateController, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	governor := unlockConditions.GovernorAddress()
 	if governor != nil {
-		addr := governor.Address.Bech32(s.NodeBridge.APIProvider().LatestAPI().ProtocolParameters().Bech32HRP())
+		addr := governor.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionGovernor, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	immutableAccount := unlockConditions.ImmutableAccount()
 	if immutableAccount != nil {
-		addr := immutableAccount.Address.Bech32(s.NodeBridge.APIProvider().LatestAPI().ProtocolParameters().Bech32HRP())
+		addr := immutableAccount.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionImmutableAlias, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
@@ -280,7 +280,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 }
 
 func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, publishOnAllTopics bool) {
-	api := s.NodeBridge.APIProvider().LatestAPI()
+	api := s.NodeBridge.APIProvider().CommittedAPI()
 	iotaOutput, err := output.UnwrapOutput(api)
 	if err != nil {
 		return
@@ -317,7 +317,7 @@ func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex
 }
 
 func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent) {
-	api := s.NodeBridge.APIProvider().LatestAPI()
+	api := s.NodeBridge.APIProvider().CommittedAPI()
 	iotaOutput, err := spent.GetOutput().UnwrapOutput(api)
 	if err != nil {
 		return
