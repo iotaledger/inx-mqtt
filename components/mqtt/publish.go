@@ -65,34 +65,26 @@ func (s *Server) PublishCommitmentInfoOnTopic(topic string, id iotago.Commitment
 }
 
 func (s *Server) PublishBlock(blk *inx.RawBlock) {
-	version, _, err := iotago.VersionFromBytes(blk.GetData())
-	if err != nil {
-		return
-	}
+	apiProvider := s.NodeBridge.APIProvider()
 
-	apiForVersion, err := s.NodeBridge.APIProvider().APIForVersion(version)
-	if err != nil {
-		return
-	}
-
-	block, err := blk.UnwrapBlock(apiForVersion)
+	block, err := blk.UnwrapBlock(apiProvider)
 	if err != nil {
 		return
 	}
 
 	s.PublishRawOnTopicIfSubscribed(topicBlocks, blk.GetData())
 
-	basicBlk, isBasicBlk := block.Block.(*iotago.BasicBlock)
+	basicBlk, isBasicBlk := block.Body.(*iotago.BasicBlockBody)
 	if !isBasicBlk {
 		return
 	}
 
 	switch payload := basicBlk.Payload.(type) {
-	case *iotago.Transaction:
+	case *iotago.SignedTransaction:
 		s.PublishRawOnTopicIfSubscribed(topicBlocksTransaction, blk.GetData())
 
 		//nolint:gocritic // the type switch is nicer here
-		switch p := payload.Essence.Payload.(type) {
+		switch p := payload.Transaction.Payload.(type) {
 		case *iotago.TaggedData:
 			s.PublishRawOnTopicIfSubscribed(topicBlocksTransactionTaggedData, blk.GetData())
 			if len(p.Tag) > 0 {
@@ -136,8 +128,8 @@ func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
 		BlockID:            blockID,
 		BlockState:         metadata.GetBlockState(),
 		BlockFailureReason: metadata.GetBlockFailureReason(),
-		TxState:            metadata.GetTxState(),
-		TxFailureReason:    metadata.GetTxFailureReason(),
+		TxState:            metadata.GetTransactionState(),
+		TxFailureReason:    metadata.GetTransactionFailureReason(),
 	}
 
 	// Serialize here instead of using publishOnTopic to avoid double JSON marshaling
@@ -172,7 +164,7 @@ func payloadForOutput(api iotago.API, ledgerIndex iotago.SlotIndex, output *inx.
 			TransactionID:        outputID.TransactionID().ToHex(),
 			Spent:                false,
 			OutputIndex:          outputID.Index(),
-			IncludedSlot:         output.GetSlotBooked(),
+			IncludedSlot:         uint64(output.SlotBooked),
 			IncludedCommitmentID: output.GetCommitmentIdIncluded().Unwrap().ToHex(),
 			LedgerIndex:          uint64(ledgerIndex),
 		},
@@ -184,7 +176,7 @@ func payloadForSpent(api iotago.API, ledgerIndex iotago.SlotIndex, spent *inx.Le
 	payload := payloadForOutput(api, ledgerIndex, spent.GetOutput(), iotaOutput)
 	if payload != nil {
 		payload.Metadata.Spent = true
-		payload.Metadata.SpentSlot = spent.GetSlotSpent()
+		payload.Metadata.SpentSlot = uint64(spent.SlotSpent)
 		payload.Metadata.CommitmentIDSpent = spent.GetCommitmentIdSpent().Unwrap().ToHex()
 		payload.Metadata.TransactionIDSpent = spent.UnwrapTransactionIDSpent().ToHex()
 	}
@@ -208,42 +200,42 @@ func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.
 
 	address := unlockConditions.Address()
 	if address != nil {
-		addr := address.Address.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
+		addr := address.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionAddress, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	storageReturn := unlockConditions.StorageDepositReturn()
 	if storageReturn != nil {
-		addr := storageReturn.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
+		addr := storageReturn.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStorageReturn, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	expiration := unlockConditions.Expiration()
 	if expiration != nil {
-		addr := expiration.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
+		addr := expiration.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionExpiration, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	stateController := unlockConditions.StateControllerAddress()
 	if stateController != nil {
-		addr := stateController.Address.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
+		addr := stateController.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStateController, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	governor := unlockConditions.GovernorAddress()
 	if governor != nil {
-		addr := governor.Address.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
+		addr := governor.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionGovernor, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	immutableAccount := unlockConditions.ImmutableAccount()
 	if immutableAccount != nil {
-		addr := immutableAccount.Address.Bech32(s.NodeBridge.APIProvider().CurrentAPI().ProtocolParameters().Bech32HRP())
+		addr := immutableAccount.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
 		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionImmutableAlias, addr), payloadFunc)
 		addressesToPublishForAny[addr] = struct{}{}
 	}
@@ -276,7 +268,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
 
 	case *iotago.FoundryOutput:
-		foundryID, err := o.ID()
+		foundryID, err := o.FoundryID()
 		if err != nil {
 			return
 		}
@@ -288,7 +280,7 @@ func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iot
 }
 
 func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, publishOnAllTopics bool) {
-	api := s.NodeBridge.APIProvider().CurrentAPI()
+	api := s.NodeBridge.APIProvider().CommittedAPI()
 	iotaOutput, err := output.UnwrapOutput(api)
 	if err != nil {
 		return
@@ -325,7 +317,7 @@ func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex
 }
 
 func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent) {
-	api := s.NodeBridge.APIProvider().CurrentAPI()
+	api := s.NodeBridge.APIProvider().CommittedAPI()
 	iotaOutput, err := spent.GetOutput().UnwrapOutput(api)
 	if err != nil {
 		return
@@ -349,15 +341,15 @@ func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpe
 func blockIDFromBlockMetadataTopic(topic string) iotago.BlockID {
 	if strings.HasPrefix(topic, "block-metadata/") && !strings.HasSuffix(topic, "/referenced") {
 		blockIDHex := strings.Replace(topic, "block-metadata/", "", 1)
-		blockID, err := iotago.SlotIdentifierFromHexString(blockIDHex)
+		blockID, err := iotago.BlockIDFromHexString(blockIDHex)
 		if err != nil {
-			return iotago.EmptyBlockID()
+			return iotago.EmptyBlockID
 		}
 
 		return blockID
 	}
 
-	return iotago.EmptyBlockID()
+	return iotago.EmptyBlockID
 }
 
 func transactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.TransactionID {
@@ -365,7 +357,7 @@ func transactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.Transa
 		transactionIDHex := strings.Replace(topic, "transactions/", "", 1)
 		transactionIDHex = strings.Replace(transactionIDHex, "/included-block", "", 1)
 
-		transactionID, err := iotago.IdentifierFromHexString(transactionIDHex)
+		transactionID, err := iotago.TransactionIDFromHexString(transactionIDHex)
 		if err != nil || len(transactionID) != iotago.TransactionIDLength {
 			return emptyTransactionID
 		}
@@ -379,7 +371,7 @@ func transactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.Transa
 func outputIDFromOutputsTopic(topic string) iotago.OutputID {
 	if strings.HasPrefix(topic, "outputs/") && !strings.HasPrefix(topic, "outputs/unlock") {
 		outputIDHex := strings.Replace(topic, "outputs/", "", 1)
-		outputID, err := iotago.OutputIDFromHex(outputIDHex)
+		outputID, err := iotago.OutputIDFromHexString(outputIDHex)
 		if err != nil {
 			return emptyOutputID
 		}
