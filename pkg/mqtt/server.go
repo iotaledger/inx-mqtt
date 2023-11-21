@@ -17,9 +17,13 @@ import (
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/web/subscriptionmanager"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
-	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
+	"github.com/iotaledger/inx-mqtt/pkg/broker"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v4"
+)
+
+const (
+	APIRoute = "mqtt/v2"
 )
 
 const (
@@ -43,10 +47,10 @@ type topicSubcription struct {
 type Server struct {
 	*logger.WrappedLogger
 
-	MQTTBroker      *mqtt.Broker
+	MQTTBroker      *broker.Broker
 	NodeBridge      *nodebridge.NodeBridge
 	shutdownHandler *shutdown.ShutdownHandler
-	brokerOptions   *mqtt.BrokerOptions
+	brokerOptions   *broker.BrokerOptions
 
 	grpcSubscriptionsLock sync.Mutex
 	grpcSubscriptions     map[string]*topicSubcription
@@ -55,8 +59,8 @@ type Server struct {
 func NewServer(log *logger.Logger,
 	bridge *nodebridge.NodeBridge,
 	shutdownHandler *shutdown.ShutdownHandler,
-	brokerOpts ...mqtt.BrokerOption) (*Server, error) {
-	opts := &mqtt.BrokerOptions{}
+	brokerOpts ...broker.BrokerOption) (*Server, error) {
+	opts := &broker.BrokerOptions{}
 	opts.ApplyOnDefault(brokerOpts...)
 
 	s := &Server{
@@ -71,7 +75,7 @@ func NewServer(log *logger.Logger,
 }
 
 func (s *Server) Run(ctx context.Context) {
-	broker, err := mqtt.NewBroker(s.brokerOptions)
+	broker, err := broker.NewBroker(s.brokerOptions)
 	if err != nil {
 		s.LogErrorfAndExit("failed to create MQTT broker: %s", err.Error())
 	}
@@ -107,7 +111,7 @@ func (s *Server) Run(ctx context.Context) {
 			advertisedAddress = s.brokerOptions.WebsocketAdvertiseAddress
 		}
 
-		if err := deps.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, advertisedAddress, ""); err != nil {
+		if err := s.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, advertisedAddress, ""); err != nil {
 			s.LogErrorfAndExit("failed to register API route via INX: %s", err.Error())
 		}
 		s.LogInfo("Registering API route ... done")
@@ -142,7 +146,7 @@ func (s *Server) Run(ctx context.Context) {
 
 		s.LogInfo("Removing API route ...")
 		//nolint:contextcheck // false positive
-		if err := deps.NodeBridge.UnregisterAPIRoute(ctxUnregister, APIRoute); err != nil {
+		if err := s.NodeBridge.UnregisterAPIRoute(ctxUnregister, APIRoute); err != nil {
 			s.LogErrorf("failed to remove API route via INX: %s", err.Error())
 		}
 		cancelUnregister()

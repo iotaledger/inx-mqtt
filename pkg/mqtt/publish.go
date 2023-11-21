@@ -214,7 +214,7 @@ func (s *Server) publishOutputWithMetadataIfSubscribed(ctx context.Context, outp
 			)
 		}
 
-		bech32HRP := deps.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP()
+		bech32HRP := s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP()
 		topics = append(topics, getChainTopicsForOutput(outputID, iotaOutput, bech32HRP)...)
 		topics = append(topics, getUnlockConditionTopicsForOutput(topicOutputsByUnlockConditionAndAddress, iotaOutput, bech32HRP)...)
 	}

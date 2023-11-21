@@ -1,4 +1,4 @@
-package mqtt
+package broker
 
 // BrokerOptions are options around the broker.
 type BrokerOptions struct {
