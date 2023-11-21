@@ -47,27 +47,29 @@ type topicSubcription struct {
 type Server struct {
 	*logger.WrappedLogger
 
-	MQTTBroker      *broker.Broker
-	NodeBridge      *nodebridge.NodeBridge
+	MQTTBroker      broker.Broker
+	NodeBridge      nodebridge.NodeBridge
 	shutdownHandler *shutdown.ShutdownHandler
-	brokerOptions   *broker.BrokerOptions
+	serverOptions   *Options
 
 	grpcSubscriptionsLock sync.Mutex
 	grpcSubscriptions     map[string]*topicSubcription
 }
 
 func NewServer(log *logger.Logger,
-	bridge *nodebridge.NodeBridge,
+	bridge nodebridge.NodeBridge,
+	broker broker.Broker,
 	shutdownHandler *shutdown.ShutdownHandler,
-	brokerOpts ...broker.BrokerOption) (*Server, error) {
-	opts := &broker.BrokerOptions{}
-	opts.ApplyOnDefault(brokerOpts...)
+	serverOpts ...Option) (*Server, error) {
+	opts := &Options{}
+	opts.ApplyOnDefault(serverOpts...)
 
 	s := &Server{
 		WrappedLogger:     logger.NewWrappedLogger(log),
 		NodeBridge:        bridge,
 		shutdownHandler:   shutdownHandler,
-		brokerOptions:     opts,
+		MQTTBroker:        broker,
+		serverOptions:     opts,
 		grpcSubscriptions: make(map[string]*topicSubcription),
 	}
 
@@ -75,40 +77,35 @@ func NewServer(log *logger.Logger,
 }
 
 func (s *Server) Run(ctx context.Context) {
-	broker, err := broker.NewBroker(s.brokerOptions)
-	if err != nil {
-		s.LogErrorfAndExit("failed to create MQTT broker: %s", err.Error())
-	}
 
 	// register broker events
 	unhookBrokerEvents := lo.Batch(
-		broker.Events().ClientConnected.Hook(func(event *subscriptionmanager.ClientEvent[string]) {
+		s.MQTTBroker.Events().ClientConnected.Hook(func(event *subscriptionmanager.ClientEvent[string]) {
 			s.onClientConnect(event.ClientID)
 		}).Unhook,
-		broker.Events().ClientDisconnected.Hook(func(event *subscriptionmanager.ClientEvent[string]) {
+		s.MQTTBroker.Events().ClientDisconnected.Hook(func(event *subscriptionmanager.ClientEvent[string]) {
 			s.onClientDisconnect(event.ClientID)
 		}).Unhook,
-		broker.Events().TopicSubscribed.Hook(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
+		s.MQTTBroker.Events().TopicSubscribed.Hook(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
 			s.onSubscribeTopic(ctx, event.ClientID, event.Topic)
 		}).Unhook,
-		broker.Events().TopicUnsubscribed.Hook(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
+		s.MQTTBroker.Events().TopicUnsubscribed.Hook(func(event *subscriptionmanager.ClientTopicEvent[string, string]) {
 			s.onUnsubscribeTopic(event.ClientID, event.Topic)
 		}).Unhook,
 	)
-	s.MQTTBroker = broker
 
-	if err := broker.Start(); err != nil {
+	if err := s.MQTTBroker.Start(); err != nil {
 		s.LogErrorfAndExit("failed to start MQTT broker: %s", err.Error())
 	}
 
-	if s.brokerOptions.WebsocketEnabled {
+	if s.serverOptions.WebsocketEnabled {
 		ctxRegister, cancelRegister := context.WithTimeout(ctx, 5*time.Second)
 
 		s.LogInfo("Registering API route ...")
 
-		advertisedAddress := s.brokerOptions.WebsocketBindAddress
-		if s.brokerOptions.WebsocketAdvertiseAddress != "" {
-			advertisedAddress = s.brokerOptions.WebsocketAdvertiseAddress
+		advertisedAddress := s.serverOptions.WebsocketBindAddress
+		if s.serverOptions.WebsocketAdvertiseAddress != "" {
+			advertisedAddress = s.serverOptions.WebsocketAdvertiseAddress
 		}
 
 		if err := s.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, advertisedAddress, ""); err != nil {
@@ -120,13 +117,13 @@ func (s *Server) Run(ctx context.Context) {
 
 	// register node bridge events
 	unhookNodeBridgeEvents := lo.Batch(
-		s.NodeBridge.Events.LatestCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
+		s.NodeBridge.Events().LatestCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
 			if err := s.publishCommitmentOnTopicIfSubscribed(topicCommitmentsLatest, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
 				s.LogWarnf("failed to publish latest commitment: %s", err.Error())
 			}
 		}).Unhook,
 
-		s.NodeBridge.Events.LatestFinalizedCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
+		s.NodeBridge.Events().LatestFinalizedCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
 			if err := s.publishCommitmentOnTopicIfSubscribed(topicCommitmentsFinalized, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
 				s.LogWarnf("failed to publish latest finalized commitment: %s", err.Error())
 			}
@@ -140,7 +137,7 @@ func (s *Server) Run(ctx context.Context) {
 	unhookBrokerEvents()
 	unhookNodeBridgeEvents()
 
-	if s.brokerOptions.WebsocketEnabled {
+	if s.serverOptions.WebsocketEnabled {
 		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelUnregister()
 

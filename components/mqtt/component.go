@@ -7,6 +7,7 @@ import (
 
 	"github.com/iotaledger/hive.go/app"
 	"github.com/iotaledger/hive.go/app/shutdown"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/broker"
 	"github.com/iotaledger/inx-mqtt/pkg/daemon"
@@ -38,15 +39,12 @@ func provide(c *dig.Container) error {
 
 	type inDeps struct {
 		dig.In
-		NodeBridge *nodebridge.NodeBridge
+		NodeBridge nodebridge.NodeBridge
 		*shutdown.ShutdownHandler
 	}
 
 	return c.Provide(func(deps inDeps) (*mqtt.Server, error) {
-		return mqtt.NewServer(
-			Component.Logger(),
-			deps.NodeBridge,
-			deps.ShutdownHandler,
+		broker, err := broker.NewBroker(
 			broker.WithBufferSize(ParamsMQTT.BufferSize),
 			broker.WithBufferBlockSize(ParamsMQTT.BufferBlockSize),
 			broker.WithMaxTopicSubscriptionsPerClient(ParamsMQTT.Subscriptions.MaxTopicSubscriptionsPerClient),
@@ -54,7 +52,6 @@ func provide(c *dig.Container) error {
 			broker.WithTopicCleanupThresholdRatio(ParamsMQTT.Subscriptions.TopicsCleanupThresholdRatio),
 			broker.WithWebsocketEnabled(ParamsMQTT.Websocket.Enabled),
 			broker.WithWebsocketBindAddress(ParamsMQTT.Websocket.BindAddress),
-			broker.WithWebsocketAdvertiseAddress(ParamsMQTT.Websocket.AdvertiseAddress),
 			broker.WithTCPEnabled(ParamsMQTT.TCP.Enabled),
 			broker.WithTCPBindAddress(ParamsMQTT.TCP.BindAddress),
 			broker.WithTCPAuthEnabled(ParamsMQTT.TCP.Auth.Enabled),
@@ -63,6 +60,19 @@ func provide(c *dig.Container) error {
 			broker.WithTCPTLSEnabled(ParamsMQTT.TCP.TLS.Enabled),
 			broker.WithTCPTLSCertificatePath(ParamsMQTT.TCP.TLS.CertificatePath),
 			broker.WithTCPTLSPrivateKeyPath(ParamsMQTT.TCP.TLS.PrivateKeyPath),
+		)
+		if err != nil {
+			return nil, ierrors.Wrap(err, "failed to create MQTT broker")
+		}
+
+		return mqtt.NewServer(
+			Component.Logger(),
+			deps.NodeBridge,
+			broker,
+			deps.ShutdownHandler,
+			mqtt.WithWebsocketEnabled(ParamsMQTT.Websocket.Enabled),
+			mqtt.WithWebsocketBindAddress(ParamsMQTT.Websocket.BindAddress),
+			mqtt.WithWebsocketAdvertiseAddress(ParamsMQTT.Websocket.AdvertiseAddress),
 		)
 	})
 }

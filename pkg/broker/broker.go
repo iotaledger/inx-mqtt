@@ -15,36 +15,57 @@ import (
 	"github.com/iotaledger/hive.go/web/subscriptionmanager"
 )
 
+type Broker interface {
+	// Events returns the events of the broker.
+	Events() subscriptionmanager.Events[string, string]
+	// Start the broker.
+	Start() error
+	// Stop the broker.
+	Stop() error
+	// HasSubscribers returns true if the topic has subscribers.
+	HasSubscribers(topic string) bool
+	// Send publishes a message.
+	Send(topic string, payload []byte) error
+	// SystemInfo returns the metrics of the broker.
+	SystemInfo() *system.Info
+	// SubscribersSize returns the size of the underlying map of the SubscriptionManager.
+	SubscribersSize() int
+	// TopicsSize returns the size of all underlying maps of the SubscriptionManager.
+	TopicsSize() int
+}
+
 // Broker is a simple mqtt publisher abstraction.
-type Broker struct {
-	broker              *mqtt.Server
-	opts                *BrokerOptions
+type broker struct {
+	server              *mqtt.Server
+	opts                *Options
 	subscriptionManager *subscriptionmanager.SubscriptionManager[string, string]
 	unhook              func()
 }
 
 // NewBroker creates a new broker.
-func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
+func NewBroker(brokerOpts ...Option) (Broker, error) {
+	opts := &Options{}
+	opts.ApplyOnDefault(brokerOpts...)
 
-	if !brokerOpts.WebsocketEnabled && !brokerOpts.TCPEnabled {
+	if !opts.WebsocketEnabled && !opts.TCPEnabled {
 		return nil, errors.New("at least websocket or TCP must be enabled")
 	}
 
-	broker := mqtt.NewServer(&mqtt.Options{
-		BufferSize:      brokerOpts.BufferSize,
-		BufferBlockSize: brokerOpts.BufferBlockSize,
+	server := mqtt.NewServer(&mqtt.Options{
+		BufferSize:      opts.BufferSize,
+		BufferBlockSize: opts.BufferBlockSize,
 		InflightTTL:     30,
 	})
 
-	if brokerOpts.WebsocketEnabled {
+	if opts.WebsocketEnabled {
 		// check websocket bind address
-		_, _, err := net.SplitHostPort(brokerOpts.WebsocketBindAddress)
+		_, _, err := net.SplitHostPort(opts.WebsocketBindAddress)
 		if err != nil {
-			return nil, fmt.Errorf("parsing websocket bind address (%s) failed: %w", brokerOpts.WebsocketBindAddress, err)
+			return nil, fmt.Errorf("parsing websocket bind address (%s) failed: %w", opts.WebsocketBindAddress, err)
 		}
 
-		ws := listeners.NewWebsocket("ws1", brokerOpts.WebsocketBindAddress)
-		if err := broker.AddListener(ws, &listeners.Config{
+		ws := listeners.NewWebsocket("ws1", opts.WebsocketBindAddress)
+		if err := server.AddListener(ws, &listeners.Config{
 			Auth: &AuthAllowEveryone{},
 			TLS:  nil,
 		}); err != nil {
@@ -52,19 +73,19 @@ func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 		}
 	}
 
-	if brokerOpts.TCPEnabled {
+	if opts.TCPEnabled {
 		// check tcp bind address
-		_, _, err := net.SplitHostPort(brokerOpts.TCPBindAddress)
+		_, _, err := net.SplitHostPort(opts.TCPBindAddress)
 		if err != nil {
-			return nil, fmt.Errorf("parsing TCP bind address (%s) failed: %w", brokerOpts.TCPBindAddress, err)
+			return nil, fmt.Errorf("parsing TCP bind address (%s) failed: %w", opts.TCPBindAddress, err)
 		}
 
-		tcp := listeners.NewTCP("t1", brokerOpts.TCPBindAddress)
+		tcp := listeners.NewTCP("t1", opts.TCPBindAddress)
 
 		var tcpAuthController auth.Controller
-		if brokerOpts.TCPAuthEnabled {
+		if opts.TCPAuthEnabled {
 			var err error
-			tcpAuthController, err = NewAuthAllowUsers(brokerOpts.TCPAuthPasswordSalt, brokerOpts.TCPAuthUsers)
+			tcpAuthController, err = NewAuthAllowUsers(opts.TCPAuthPasswordSalt, opts.TCPAuthUsers)
 			if err != nil {
 				return nil, fmt.Errorf("enabling TCP Authentication failed: %w", err)
 			}
@@ -73,16 +94,16 @@ func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 		}
 
 		var tlsConfig *tls.Config
-		if brokerOpts.TCPTLSEnabled {
+		if opts.TCPTLSEnabled {
 			var err error
 
-			tlsConfig, err = NewTLSConfig(brokerOpts.TCPTLSCertificatePath, brokerOpts.TCPTLSPrivateKeyPath)
+			tlsConfig, err = NewTLSConfig(opts.TCPTLSCertificatePath, opts.TCPTLSPrivateKeyPath)
 			if err != nil {
 				return nil, fmt.Errorf("enabling TCP TLS failed: %w", err)
 			}
 		}
 
-		if err := broker.AddListener(tcp, &listeners.Config{
+		if err := server.AddListener(tcp, &listeners.Config{
 			Auth:      tcpAuthController,
 			TLSConfig: tlsConfig,
 		}); err != nil {
@@ -91,14 +112,14 @@ func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 	}
 
 	s := subscriptionmanager.New(
-		subscriptionmanager.WithMaxTopicSubscriptionsPerClient[string, string](brokerOpts.MaxTopicSubscriptionsPerClient),
-		subscriptionmanager.WithCleanupThresholdCount[string, string](brokerOpts.TopicCleanupThresholdCount),
-		subscriptionmanager.WithCleanupThresholdRatio[string, string](brokerOpts.TopicCleanupThresholdRatio),
+		subscriptionmanager.WithMaxTopicSubscriptionsPerClient[string, string](opts.MaxTopicSubscriptionsPerClient),
+		subscriptionmanager.WithCleanupThresholdCount[string, string](opts.TopicCleanupThresholdCount),
+		subscriptionmanager.WithCleanupThresholdRatio[string, string](opts.TopicCleanupThresholdRatio),
 	)
 
 	// this event is used to drop malicious clients
 	unhook := s.Events().DropClient.Hook(func(event *subscriptionmanager.DropClientEvent[string]) {
-		client, exists := broker.Clients.Get(event.ClientID)
+		client, exists := server.Clients.Get(event.ClientID)
 		if !exists {
 			return
 		}
@@ -107,72 +128,74 @@ func NewBroker(brokerOpts *BrokerOptions) (*Broker, error) {
 		client.Stop(event.Reason)
 
 		// delete the client from the broker
-		broker.Clients.Delete(event.ClientID)
+		server.Clients.Delete(event.ClientID)
 	}).Unhook
 
 	// bind the broker events to the SubscriptionManager to track the subscriptions
-	broker.Events.OnConnect = func(cl events.Client, pk events.Packet) {
+	server.Events.OnConnect = func(cl events.Client, pk events.Packet) {
 		s.Connect(cl.ID)
 	}
 
-	broker.Events.OnDisconnect = func(cl events.Client, err error) {
+	server.Events.OnDisconnect = func(cl events.Client, err error) {
 		s.Disconnect(cl.ID)
 	}
 
-	broker.Events.OnSubscribe = func(topic string, cl events.Client, qos byte) {
+	server.Events.OnSubscribe = func(topic string, cl events.Client, qos byte) {
 		s.Subscribe(cl.ID, topic)
 	}
 
-	broker.Events.OnUnsubscribe = func(topic string, cl events.Client) {
+	server.Events.OnUnsubscribe = func(topic string, cl events.Client) {
 		s.Unsubscribe(cl.ID, topic)
 	}
 
-	return &Broker{
-		broker:              broker,
-		opts:                brokerOpts,
+	return &broker{
+		server:              server,
+		opts:                opts,
 		subscriptionManager: s,
 		unhook:              unhook,
 	}, nil
 }
 
-func (b *Broker) Events() subscriptionmanager.Events[string, string] {
+// Events returns the events of the broker.
+func (b *broker) Events() subscriptionmanager.Events[string, string] {
 	return *b.subscriptionManager.Events()
 }
 
 // Start the broker.
-func (b *Broker) Start() error {
-	return b.broker.Serve()
+func (b *broker) Start() error {
+	return b.server.Serve()
 }
 
 // Stop the broker.
-func (b *Broker) Stop() error {
+func (b *broker) Stop() error {
 	if b.unhook != nil {
 		b.unhook()
 	}
 
-	return b.broker.Close()
+	return b.server.Close()
 }
 
 // SystemInfo returns the metrics of the broker.
-func (b *Broker) SystemInfo() *system.Info {
-	return b.broker.System
-}
-
-func (b *Broker) HasSubscribers(topic string) bool {
+func (b *broker) HasSubscribers(topic string) bool {
 	return b.subscriptionManager.TopicHasSubscribers(topic)
 }
 
 // Send publishes a message.
-func (b *Broker) Send(topic string, payload []byte) error {
-	return b.broker.Publish(topic, payload, false)
+func (b *broker) Send(topic string, payload []byte) error {
+	return b.server.Publish(topic, payload, false)
+}
+
+// SystemInfo returns the metrics of the broker.
+func (b *broker) SystemInfo() *system.Info {
+	return b.server.System
 }
 
 // SubscribersSize returns the size of the underlying map of the SubscriptionManager.
-func (b *Broker) SubscribersSize() int {
+func (b *broker) SubscribersSize() int {
 	return b.subscriptionManager.SubscribersSize()
 }
 
 // TopicsSize returns the size of all underlying maps of the SubscriptionManager.
-func (b *Broker) TopicsSize() int {
+func (b *broker) TopicsSize() int {
 	return b.subscriptionManager.TopicsSize()
 }

@@ -1,7 +1,7 @@
 package broker
 
-// BrokerOptions are options around the broker.
-type BrokerOptions struct {
+// Options are options around the broker.
+type Options struct {
 	// BufferSize is the size of the client buffers in bytes.
 	BufferSize int
 	// BufferBlockSize is the size per client buffer R/W block in bytes.
@@ -18,9 +18,6 @@ type BrokerOptions struct {
 	WebsocketEnabled bool
 	// WebsocketBindAddress defines the websocket bind address on which the MQTT broker listens on.
 	WebsocketBindAddress string
-	// WebsocketAdvertiseAddress defines the address of the websocket of the MQTT broker which is advertised to the INX Server (optional).
-	WebsocketAdvertiseAddress string
-
 	// TCPEnabled defines whether to enable the TCP connection of the MQTT broker.
 	TCPEnabled bool
 	// TCPBindAddress defines the TCP bind address on which the MQTT broker listens on.
@@ -41,14 +38,13 @@ type BrokerOptions struct {
 	TCPTLSPrivateKeyPath string
 }
 
-var defaultBrokerOpts = []BrokerOption{
+var defaultOpts = []Option{
 	WithBufferSize(0),
 	WithBufferBlockSize(0),
 	WithTopicCleanupThresholdCount(10000),
 	WithTopicCleanupThresholdRatio(1.0),
 	WithWebsocketEnabled(true),
 	WithWebsocketBindAddress("localhost:1888"),
-	WithWebsocketAdvertiseAddress(""),
 	WithTCPEnabled(false),
 	WithTCPBindAddress("localhost:1883"),
 	WithTCPAuthEnabled(false),
@@ -59,130 +55,123 @@ var defaultBrokerOpts = []BrokerOption{
 	WithTCPTLSPrivateKeyPath(""),
 }
 
-// applies the given BrokerOption.
-func (bo *BrokerOptions) apply(opts ...BrokerOption) {
+// applies the given Option.
+func (bo *Options) apply(opts ...Option) {
 	for _, opt := range opts {
 		opt(bo)
 	}
 }
 
 // ApplyOnDefault applies the given options on top of the default options.
-func (bo *BrokerOptions) ApplyOnDefault(opts ...BrokerOption) {
-	bo.apply(defaultBrokerOpts...)
+func (bo *Options) ApplyOnDefault(opts ...Option) {
+	bo.apply(defaultOpts...)
 	bo.apply(opts...)
 }
 
-// BrokerOption is a function which sets an option on a BrokerOptions instance.
-type BrokerOption func(options *BrokerOptions)
+// Option is a function which sets an option on a Options instance.
+type Option func(options *Options)
 
 // WithBufferSize sets the size of the client buffers in bytes.
-func WithBufferSize(bufferSize int) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithBufferSize(bufferSize int) Option {
+	return func(options *Options) {
 		options.BufferSize = bufferSize
 	}
 }
 
 // WithBufferBlockSize sets the size per client buffer R/W block in bytes.
-func WithBufferBlockSize(bufferBlockSize int) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithBufferBlockSize(bufferBlockSize int) Option {
+	return func(options *Options) {
 		options.BufferBlockSize = bufferBlockSize
 	}
 }
 
 // WithMaxTopicSubscriptionsPerClient sets the maximum number of topic subscriptions per client before the client gets dropped (DOS protection).
-func WithMaxTopicSubscriptionsPerClient(maxTopicSubscriptionsPerClient int) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithMaxTopicSubscriptionsPerClient(maxTopicSubscriptionsPerClient int) Option {
+	return func(options *Options) {
 		options.MaxTopicSubscriptionsPerClient = maxTopicSubscriptionsPerClient
 	}
 }
 
 // WithTopicCleanupThresholdCount sets the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
-func WithTopicCleanupThresholdCount(topicCleanupThresholdCount int) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTopicCleanupThresholdCount(topicCleanupThresholdCount int) Option {
+	return func(options *Options) {
 		options.TopicCleanupThresholdCount = topicCleanupThresholdCount
 	}
 }
 
 // WithTopicCleanupThresholdRatio the ratio of subscribed topics to deleted topics that trigger a garbage collection of the SubscriptionManager.
-func WithTopicCleanupThresholdRatio(topicCleanupThresholdRatio float32) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTopicCleanupThresholdRatio(topicCleanupThresholdRatio float32) Option {
+	return func(options *Options) {
 		options.TopicCleanupThresholdRatio = topicCleanupThresholdRatio
 	}
 }
 
 // WithWebsocketEnabled sets whether to enable the websocket connection of the MQTT broker.
-func WithWebsocketEnabled(websocketEnabled bool) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithWebsocketEnabled(websocketEnabled bool) Option {
+	return func(options *Options) {
 		options.WebsocketEnabled = websocketEnabled
 	}
 }
 
 // WithWebsocketBindAddress sets the websocket bind address on which the MQTT broker listens on.
-func WithWebsocketBindAddress(websocketBindAddress string) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithWebsocketBindAddress(websocketBindAddress string) Option {
+	return func(options *Options) {
 		options.WebsocketBindAddress = websocketBindAddress
 	}
 }
 
-// WithWebsocketBindAddress sets the address of the websocket of the MQTT broker which is advertised to the INX Server (optional).
-func WithWebsocketAdvertiseAddress(websocketAdvertiseAddress string) BrokerOption {
-	return func(options *BrokerOptions) {
-		options.WebsocketAdvertiseAddress = websocketAdvertiseAddress
-	}
-}
-
 // WithTCPEnabled sets whether to enable the TCP connection of the MQTT broker.
-func WithTCPEnabled(tcpEnabled bool) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTCPEnabled(tcpEnabled bool) Option {
+	return func(options *Options) {
 		options.TCPEnabled = tcpEnabled
 	}
 }
 
 // WithTCPBindAddress sets the TCP bind address on which the MQTT broker listens on.
-func WithTCPBindAddress(tcpBindAddress string) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTCPBindAddress(tcpBindAddress string) Option {
+	return func(options *Options) {
 		options.TCPBindAddress = tcpBindAddress
 	}
 }
 
 // WithTCPAuthEnabled sets whether to enable auth for TCP connections.
-func WithTCPAuthEnabled(tcpAuthEnabled bool) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTCPAuthEnabled(tcpAuthEnabled bool) Option {
+	return func(options *Options) {
 		options.TCPAuthEnabled = tcpAuthEnabled
 	}
 }
 
 // WithTCPAuthPasswordSalt sets the auth salt used for hashing the passwords of the users.
-func WithTCPAuthPasswordSalt(tcpAuthPasswordSalt string) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTCPAuthPasswordSalt(tcpAuthPasswordSalt string) Option {
+	return func(options *Options) {
 		options.TCPAuthPasswordSalt = tcpAuthPasswordSalt
 	}
 }
 
 // WithTCPAuthUsers sets the list of allowed users with their password+salt as a scrypt hash.
-func WithTCPAuthUsers(tcpAuthUsers map[string]string) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTCPAuthUsers(tcpAuthUsers map[string]string) Option {
+	return func(options *Options) {
 		options.TCPAuthUsers = tcpAuthUsers
 	}
 }
 
 // WithTCPTLSEnabled sets whether to enable TLS for TCP connections.
-func WithTCPTLSEnabled(tcpTLSEnabled bool) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTCPTLSEnabled(tcpTLSEnabled bool) Option {
+	return func(options *Options) {
 		options.TCPTLSEnabled = tcpTLSEnabled
 	}
 }
 
 // WithTCPTLSCertificatePath sets the path to the certificate file (x509 PEM) for TCP connections with TLS.
-func WithTCPTLSCertificatePath(tcpTLSCertificatePath string) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTCPTLSCertificatePath(tcpTLSCertificatePath string) Option {
+	return func(options *Options) {
 		options.TCPTLSCertificatePath = tcpTLSCertificatePath
 	}
 }
 
 // WithTCPTLSPrivateKeyPath sets the path to the private key file (x509 PEM) for TCP connections with TLS.
-func WithTCPTLSPrivateKeyPath(tcpTLSPrivateKeyPath string) BrokerOption {
-	return func(options *BrokerOptions) {
+func WithTCPTLSPrivateKeyPath(tcpTLSPrivateKeyPath string) Option {
+	return func(options *Options) {
 		options.TCPTLSPrivateKeyPath = tcpTLSPrivateKeyPath
 	}
 }
