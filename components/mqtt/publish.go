@@ -2,382 +2,304 @@ package mqtt
 
 import (
 	"context"
-	"encoding/json"
-	"strings"
 
+	"github.com/iotaledger/hive.go/ierrors"
 	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v4"
-	"github.com/iotaledger/iota.go/v4/hexutil"
+	"github.com/iotaledger/iota.go/v4/nodeclient/apimodels"
 )
 
 func (s *Server) sendMessageOnTopic(topic string, payload []byte) {
 	if err := s.MQTTBroker.Send(topic, payload); err != nil {
-		s.LogWarnf("Failed to send message on topic %s: %s", topic, err)
+		s.LogWarnf("failed to send message on topic %s, error: %s", topic, err.Error())
 	}
 }
 
-func (s *Server) PublishRawOnTopicIfSubscribed(topic string, payload []byte) {
-	if s.MQTTBroker.HasSubscribers(topic) {
+func (s *Server) publishWithPayloadFuncOnTopicsIfSubscribed(payloadFunc func() ([]byte, error), topics ...string) error {
+	var payload []byte
+
+	for _, topic := range topics {
+		if !s.MQTTBroker.HasSubscribers(topic) {
+			continue
+		}
+
+		if payload == nil {
+			// payload is not yet set, so we need to call the payloadFunc
+			var err error
+			payload, err = payloadFunc()
+			if err != nil {
+				return err
+			}
+		}
+
 		s.sendMessageOnTopic(topic, payload)
 	}
+
+	return nil
 }
 
-func (s *Server) PublishPayloadFuncOnTopicIfSubscribed(topic string, payloadFunc func() interface{}) {
-	if s.MQTTBroker.HasSubscribers(topic) {
-		s.PublishOnTopic(topic, payloadFunc())
+func addTopicsPrefix(topics []string, prefix string) []string {
+	rawTopics := make([]string, len(topics))
+
+	for i, topic := range topics {
+		rawTopics[i] = topic + prefix
 	}
+
+	return rawTopics
 }
 
-func (s *Server) PublishOnTopicIfSubscribed(topic string, payload interface{}) {
-	if s.MQTTBroker.HasSubscribers(topic) {
-		s.PublishOnTopic(topic, payload)
+func (s *Server) publishWithPayloadFuncsOnTopicsIfSubscribed(jsonPayloadFunc func() ([]byte, error), rawPayloadFunc func() ([]byte, error), topics ...string) error {
+	// publish JSON payload
+	if err := s.publishWithPayloadFuncOnTopicsIfSubscribed(func() ([]byte, error) {
+		return jsonPayloadFunc()
+	}, topics...); err != nil {
+		return err
 	}
+
+	// publish raw payload
+	if err := s.publishWithPayloadFuncOnTopicsIfSubscribed(func() ([]byte, error) {
+		return rawPayloadFunc()
+	}, addTopicsPrefix(topics, "/raw")...); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *Server) PublishOnTopic(topic string, payload interface{}) {
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		return
-	}
+func (s *Server) publishPayloadOnTopicsIfSubscribed(apiFunc func() (iotago.API, error), payloadFunc func() (any, error), topics ...string) error {
+	return s.publishWithPayloadFuncsOnTopicsIfSubscribed(func() ([]byte, error) {
+		api, err := apiFunc()
+		if err != nil {
+			return nil, err
+		}
 
-	s.sendMessageOnTopic(topic, jsonPayload)
+		payload, err := payloadFunc()
+		if err != nil {
+			return nil, err
+		}
+
+		return api.JSONEncode(payload)
+	}, func() ([]byte, error) {
+		api, err := apiFunc()
+		if err != nil {
+			return nil, err
+		}
+
+		payload, err := payloadFunc()
+		if err != nil {
+			return nil, err
+		}
+
+		return api.Encode(payload)
+	}, topics...)
 }
 
-func (s *Server) PublishRawCommitmentOnTopic(topic string, commitment *iotago.Commitment) {
-	apiForVersion, err := s.NodeBridge.APIProvider().APIForVersion(commitment.ProtocolVersion)
-	if err != nil {
-		return
-	}
+func (s *Server) publishCommitmentOnTopicIfSubscribed(topic string, commitmentFunc func() (*iotago.Commitment, error)) error {
+	return s.publishPayloadOnTopicsIfSubscribed(
+		func() (iotago.API, error) {
+			commitment, err := commitmentFunc()
+			if err != nil {
+				return nil, err
+			}
 
-	rawCommitment, err := apiForVersion.Encode(commitment)
-	if err != nil {
-		return
-	}
-
-	s.PublishRawOnTopicIfSubscribed(topic, rawCommitment)
+			return s.NodeBridge.APIProvider().APIForVersion(commitment.ProtocolVersion)
+		},
+		func() (any, error) {
+			return commitmentFunc()
+		},
+		topic,
+	)
 }
 
-func (s *Server) PublishCommitmentInfoOnTopic(topic string, id iotago.CommitmentID) {
-	s.PublishOnTopicIfSubscribed(topic, &commitmentInfoPayload{
-		CommitmentID:    id.ToHex(),
-		CommitmentIndex: uint64(id.Index()),
-	})
-}
+func (s *Server) blockTopicsForBasicBlock(basicBlockBody *iotago.BasicBlockBody) []string {
+	blockTopics := []string{topicBlocksBasic}
 
-func (s *Server) PublishBlock(blk *inx.RawBlock) {
-	apiProvider := s.NodeBridge.APIProvider()
-
-	block, err := blk.UnwrapBlock(apiProvider)
-	if err != nil {
-		return
-	}
-
-	s.PublishRawOnTopicIfSubscribed(topicBlocks, blk.GetData())
-
-	basicBlk, isBasicBlk := block.Body.(*iotago.BasicBlockBody)
-	if !isBasicBlk {
-		return
-	}
-
-	switch payload := basicBlk.Payload.(type) {
+	switch payload := basicBlockBody.Payload.(type) {
 	case *iotago.SignedTransaction:
-		s.PublishRawOnTopicIfSubscribed(topicBlocksTransaction, blk.GetData())
+		blockTopics = append(blockTopics, topicBlocksBasicTransaction)
 
 		//nolint:gocritic // the type switch is nicer here
 		switch p := payload.Transaction.Payload.(type) {
 		case *iotago.TaggedData:
-			s.PublishRawOnTopicIfSubscribed(topicBlocksTransactionTaggedData, blk.GetData())
+			blockTopics = append(blockTopics, topicBlocksBasicTransactionTaggedData)
 			if len(p.Tag) > 0 {
-				txTaggedDataTagTopic := strings.ReplaceAll(topicBlocksTransactionTaggedDataTag, parameterTag, hexutil.EncodeHex(p.Tag))
-				s.PublishRawOnTopicIfSubscribed(txTaggedDataTagTopic, blk.GetData())
+				blockTopics = append(blockTopics, getTopicBlocksBasicTransactionTaggedDataTag(p.Tag))
 			}
 		}
 
 	case *iotago.TaggedData:
-		s.PublishRawOnTopicIfSubscribed(topicBlocksTaggedData, blk.GetData())
+		blockTopics = append(blockTopics, topicBlocksBasicTaggedData)
 		if len(payload.Tag) > 0 {
-			taggedDataTagTopic := strings.ReplaceAll(topicBlocksTaggedDataTag, parameterTag, hexutil.EncodeHex(payload.Tag))
-			s.PublishRawOnTopicIfSubscribed(taggedDataTagTopic, blk.GetData())
+			blockTopics = append(blockTopics, getTopicBlocksBasicTaggedDataTag(payload.Tag))
 		}
 	}
+
+	return blockTopics
 }
 
-func (s *Server) hasSubscriberForTransactionIncludedBlock(transactionID iotago.TransactionID) bool {
-	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedBlock, parameterTransactionID, transactionID.ToHex())
-
-	return s.MQTTBroker.HasSubscribers(transactionTopic)
-}
-
-func (s *Server) PublishTransactionIncludedBlock(transactionID iotago.TransactionID, block *inx.RawBlock) {
-	transactionTopic := strings.ReplaceAll(topicTransactionsIncludedBlock, parameterTransactionID, transactionID.ToHex())
-	s.PublishRawOnTopicIfSubscribed(transactionTopic, block.GetData())
-}
-
-func (s *Server) PublishBlockMetadata(metadata *inx.BlockMetadata) {
-	blockID := metadata.GetBlockId().Unwrap().ToHex()
-	singleBlockTopic := strings.ReplaceAll(topicBlockMetadata, parameterBlockID, blockID)
-	hasSingleBlockTopicSubscriber := s.MQTTBroker.HasSubscribers(singleBlockTopic)
-	hasAcceptedBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataAccepted)
-	hasConfirmedBlocksTopicSubscriber := s.MQTTBroker.HasSubscribers(topicBlockMetadataConfirmed)
-
-	if !hasSingleBlockTopicSubscriber && !hasConfirmedBlocksTopicSubscriber && !hasAcceptedBlocksTopicSubscriber {
-		return
-	}
-
-	response := &blockMetadataPayload{
-		BlockID:            blockID,
-		BlockState:         metadata.GetBlockState(),
-		BlockFailureReason: metadata.GetBlockFailureReason(),
-		TxState:            metadata.GetTransactionState(),
-		TxFailureReason:    metadata.GetTransactionFailureReason(),
-	}
-
-	// Serialize here instead of using publishOnTopic to avoid double JSON marshaling
-	jsonPayload, err := json.Marshal(response)
+func (s *Server) publishBlockIfSubscribed(blk *inx.RawBlock) error {
+	// we need to unwrap the block to figure out which topics we need to publish on
+	block, err := blk.UnwrapBlock(s.NodeBridge.APIProvider())
 	if err != nil {
-		return
+		return err
 	}
 
-	if hasSingleBlockTopicSubscriber {
-		s.sendMessageOnTopic(singleBlockTopic, jsonPayload)
-	}
-	if hasConfirmedBlocksTopicSubscriber {
-		s.sendMessageOnTopic(topicBlockMetadataConfirmed, jsonPayload)
-	}
-	if hasAcceptedBlocksTopicSubscriber {
-		s.sendMessageOnTopic(topicBlockMetadataAccepted, jsonPayload)
-	}
-}
+	// always publish every block on the "blocks" topic
+	blockTopics := []string{topicBlocks}
 
-func payloadForOutput(api iotago.API, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, iotaOutput iotago.Output) *outputPayload {
-	rawOutputJSON, err := api.JSONEncode(iotaOutput)
-	if err != nil {
-		return nil
-	}
-
-	rawRawOutputJSON := json.RawMessage(rawOutputJSON)
-	outputID := output.GetOutputId().Unwrap()
-
-	return &outputPayload{
-		Metadata: &outputMetadataPayload{
-			BlockID:              output.GetBlockId().Unwrap().ToHex(),
-			TransactionID:        outputID.TransactionID().ToHex(),
-			Spent:                false,
-			OutputIndex:          outputID.Index(),
-			IncludedSlot:         uint64(output.SlotBooked),
-			IncludedCommitmentID: output.GetCommitmentIdIncluded().Unwrap().ToHex(),
-			LedgerIndex:          uint64(ledgerIndex),
-		},
-		RawOutput: &rawRawOutputJSON,
-	}
-}
-
-func payloadForSpent(api iotago.API, ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent, iotaOutput iotago.Output) *outputPayload {
-	payload := payloadForOutput(api, ledgerIndex, spent.GetOutput(), iotaOutput)
-	if payload != nil {
-		payload.Metadata.Spent = true
-		payload.Metadata.SpentSlot = uint64(spent.SlotSpent)
-		payload.Metadata.CommitmentIDSpent = spent.GetCommitmentIdSpent().Unwrap().ToHex()
-		payload.Metadata.TransactionIDSpent = spent.UnwrapTransactionIDSpent().ToHex()
-	}
-
-	return payload
-}
-
-func (s *Server) PublishOnUnlockConditionTopics(baseTopic string, output iotago.Output, payloadFunc func() interface{}) {
-
-	topicFunc := func(condition unlockCondition, addressString string) string {
-		topic := strings.ReplaceAll(baseTopic, parameterCondition, string(condition))
-
-		return strings.ReplaceAll(topic, parameterAddress, addressString)
-	}
-
-	unlockConditions := output.UnlockConditionSet()
-
-	// this tracks the addresses used by any unlock condition
-	// so that after checking all conditions we can see if anyone is subscribed to the wildcard
-	addressesToPublishForAny := make(map[string]struct{})
-
-	address := unlockConditions.Address()
-	if address != nil {
-		addr := address.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionAddress, addr), payloadFunc)
-		addressesToPublishForAny[addr] = struct{}{}
-	}
-
-	storageReturn := unlockConditions.StorageDepositReturn()
-	if storageReturn != nil {
-		addr := storageReturn.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStorageReturn, addr), payloadFunc)
-		addressesToPublishForAny[addr] = struct{}{}
-	}
-
-	expiration := unlockConditions.Expiration()
-	if expiration != nil {
-		addr := expiration.ReturnAddress.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionExpiration, addr), payloadFunc)
-		addressesToPublishForAny[addr] = struct{}{}
-	}
-
-	stateController := unlockConditions.StateControllerAddress()
-	if stateController != nil {
-		addr := stateController.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionStateController, addr), payloadFunc)
-		addressesToPublishForAny[addr] = struct{}{}
-	}
-
-	governor := unlockConditions.GovernorAddress()
-	if governor != nil {
-		addr := governor.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionGovernor, addr), payloadFunc)
-		addressesToPublishForAny[addr] = struct{}{}
-	}
-
-	immutableAccount := unlockConditions.ImmutableAccount()
-	if immutableAccount != nil {
-		addr := immutableAccount.Address.Bech32(s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionImmutableAlias, addr), payloadFunc)
-		addressesToPublishForAny[addr] = struct{}{}
-	}
-
-	for addr := range addressesToPublishForAny {
-		s.PublishPayloadFuncOnTopicIfSubscribed(topicFunc(unlockConditionAny, addr), payloadFunc)
-	}
-}
-
-func (s *Server) PublishOnOutputChainTopics(outputID iotago.OutputID, output iotago.Output, payloadFunc func() interface{}) {
-
-	switch o := output.(type) {
-	case *iotago.NFTOutput:
-		nftID := o.NFTID
-		if nftID.Empty() {
-			// Use implicit NFTID
-			nftAddr := iotago.NFTAddressFromOutputID(outputID)
-			nftID = nftAddr.NFTID()
-		}
-		topic := strings.ReplaceAll(topicNFTOutputs, parameterNFTID, nftID.String())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
-
-	case *iotago.AccountOutput:
-		accountID := o.AccountID
-		if accountID.Empty() {
-			// Use implicit AccountID
-			accountID = iotago.AccountIDFromOutputID(outputID)
-		}
-		topic := strings.ReplaceAll(topicAccountOutputs, parameterAccountID, accountID.String())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
-
-	case *iotago.FoundryOutput:
-		foundryID, err := o.FoundryID()
-		if err != nil {
-			return
-		}
-		topic := strings.ReplaceAll(topicFoundryOutputs, parameterFoundryID, foundryID.String())
-		s.PublishPayloadFuncOnTopicIfSubscribed(topic, payloadFunc)
-
+	switch blockBody := block.Body.(type) {
+	case *iotago.BasicBlockBody:
+		blockTopics = append(blockTopics, s.blockTopicsForBasicBlock(blockBody)...)
+	case *iotago.ValidationBlockBody:
+		blockTopics = append(blockTopics, topicBlocksValidation)
 	default:
+		s.LogWarnf("unknown block body type: %T", blockBody)
 	}
+
+	return s.publishWithPayloadFuncsOnTopicsIfSubscribed(func() ([]byte, error) {
+		return block.API.JSONEncode(block)
+	}, func() ([]byte, error) {
+		return blk.GetData(), nil
+	}, blockTopics...)
 }
 
-func (s *Server) PublishOutput(ctx context.Context, ledgerIndex iotago.SlotIndex, output *inx.LedgerOutput, publishOnAllTopics bool) {
+func (s *Server) publishBlockMetadataOnTopicIfSubscribed(metadataFunc func() (*inx.BlockMetadata, error), topic string) error {
+	return s.publishPayloadOnTopicsIfSubscribed(
+		func() (iotago.API, error) { return s.NodeBridge.APIProvider().CommittedAPI(), nil },
+		func() (any, error) {
+			metadata, err := metadataFunc()
+			if err != nil {
+				return nil, err
+			}
+
+			transactionStateString := ""
+
+			//nolint:nosnakecase
+			if metadata.GetTransactionState() != inx.BlockMetadata_TRANSACTION_STATE_NO_TRANSACTION {
+				transactionStateString = apimodels.TransactionState(metadata.GetTransactionState()).String()
+			}
+
+			return &apimodels.BlockMetadataResponse{
+				BlockID:                  metadata.GetBlockId().Unwrap(),
+				BlockState:               apimodels.BlockState(metadata.GetBlockState()).String(),
+				BlockFailureReason:       apimodels.BlockFailureReason(metadata.GetBlockFailureReason()),
+				TransactionState:         transactionStateString,
+				TransactionFailureReason: apimodels.TransactionFailureReason(metadata.GetTransactionFailureReason()),
+			}, nil
+		},
+		topic,
+	)
+}
+
+func (s *Server) publishOutputWithMetadataIfSubscribed(ctx context.Context, output *inx.LedgerOutput, payloadFunc func(api iotago.API, iotaOutput iotago.Output) (*apimodels.OutputWithMetadataResponse, error), publishOnAllTopics bool, publishTxInclusion bool) error {
+	// we need to unwrap the output to figure out which topics we need to publish on
 	api := s.NodeBridge.APIProvider().CommittedAPI()
+
 	iotaOutput, err := output.UnwrapOutput(api)
 	if err != nil {
-		return
+		return err
 	}
 
-	var payload *outputPayload
-	payloadFunc := func() interface{} {
-		if payload == nil {
-			payload = payloadForOutput(api, ledgerIndex, output, iotaOutput)
+	topics := []string{getTopicOutput(output)}
+	if publishOnAllTopics {
+		outputID := output.GetOutputId().Unwrap()
+
+		// If this is the first output in a transaction (index 0), then check if someone is observing the transaction that generated this output
+		if publishTxInclusion && outputID.Index() == 0 {
+			s.fetchAndPublishTransactionInclusionWithBlock(ctx,
+				outputID.TransactionID(),
+				func() (iotago.BlockID, error) {
+					return output.GetBlockId().Unwrap(), nil
+				},
+			)
 		}
 
-		return payload
+		bech32HRP := deps.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP()
+		topics = append(topics, getChainTopicsForOutput(outputID, iotaOutput, bech32HRP)...)
+		topics = append(topics, getUnlockConditionTopicsForOutput(topicOutputsByUnlockConditionAndAddress, iotaOutput, bech32HRP)...)
 	}
 
-	outputID := output.GetOutputId().Unwrap()
-	outputsTopic := strings.ReplaceAll(topicOutputs, parameterOutputID, outputID.ToHex())
-	s.PublishPayloadFuncOnTopicIfSubscribed(outputsTopic, payloadFunc)
-
-	if publishOnAllTopics {
-		// If this is the first output in a transaction (index 0), then check if someone is observing the transaction that generated this output
-		if outputID.Index() == 0 {
-			ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
-			defer cancelFetch()
-
-			transactionID := outputID.TransactionID()
-			if s.hasSubscriberForTransactionIncludedBlock(transactionID) {
-				s.fetchAndPublishTransactionInclusionWithBlock(ctxFetch, transactionID, output.GetBlockId().Unwrap())
+	var payload *apimodels.OutputWithMetadataResponse
+	payloadFuncCached := func() (any, error) {
+		if payload == nil {
+			payload, err = payloadFunc(api, iotaOutput)
+			if err != nil {
+				return nil, err
 			}
 		}
 
-		s.PublishOnOutputChainTopics(outputID, iotaOutput, payloadFunc)
-		s.PublishOnUnlockConditionTopics(topicOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
+		return payload, nil
 	}
+
+	return s.publishPayloadOnTopicsIfSubscribed(
+		func() (iotago.API, error) {
+			return api, nil
+		},
+		payloadFuncCached,
+		topics...,
+	)
 }
 
-func (s *Server) PublishSpent(ledgerIndex iotago.SlotIndex, spent *inx.LedgerSpent) {
-	api := s.NodeBridge.APIProvider().CommittedAPI()
-	iotaOutput, err := spent.GetOutput().UnwrapOutput(api)
+func payloadForOutput(api iotago.API, output *inx.LedgerOutput, iotaOutput iotago.Output, latestCommitmentID iotago.CommitmentID) (*apimodels.OutputWithMetadataResponse, error) {
+	outputID := output.GetOutputId().Unwrap()
+	outputIDProof, err := output.UnwrapOutputIDProof(api)
 	if err != nil {
-		return
+		return nil, ierrors.Wrap(err, "failed to unwrap output ID proof")
 	}
 
-	var payload *outputPayload
-	payloadFunc := func() interface{} {
-		if payload == nil {
-			payload = payloadForSpent(api, ledgerIndex, spent, iotaOutput)
-		}
-
-		return payload
-	}
-
-	outputsTopic := strings.ReplaceAll(topicOutputs, parameterOutputID, spent.GetOutput().GetOutputId().Unwrap().ToHex())
-	s.PublishPayloadFuncOnTopicIfSubscribed(outputsTopic, payloadFunc)
-
-	s.PublishOnUnlockConditionTopics(topicSpentOutputsByUnlockConditionAndAddress, iotaOutput, payloadFunc)
+	return &apimodels.OutputWithMetadataResponse{
+		Output:        iotaOutput,
+		OutputIDProof: outputIDProof,
+		Metadata: &apimodels.OutputMetadata{
+			BlockID:              output.GetBlockId().Unwrap(),
+			TransactionID:        outputID.TransactionID(),
+			OutputIndex:          outputID.Index(),
+			IsSpent:              false,
+			CommitmentIDSpent:    iotago.EmptyCommitmentID,
+			TransactionIDSpent:   iotago.EmptyTransactionID,
+			IncludedCommitmentID: output.GetCommitmentIdIncluded().Unwrap(),
+			LatestCommitmentID:   latestCommitmentID,
+		},
+	}, nil
 }
 
-func blockIDFromBlockMetadataTopic(topic string) iotago.BlockID {
-	if strings.HasPrefix(topic, "block-metadata/") && !strings.HasSuffix(topic, "/referenced") {
-		blockIDHex := strings.Replace(topic, "block-metadata/", "", 1)
-		blockID, err := iotago.BlockIDFromHexString(blockIDHex)
-		if err != nil {
-			return iotago.EmptyBlockID
-		}
+func (s *Server) publishOutputIfSubscribed(ctx context.Context, output *inx.LedgerOutput, publishOnAllTopics bool, latestCommitmentID ...iotago.CommitmentID) error {
+	return s.publishOutputWithMetadataIfSubscribed(ctx,
+		output,
+		func(api iotago.API, iotaOutput iotago.Output) (*apimodels.OutputWithMetadataResponse, error) {
+			latestID := s.NodeBridge.LatestCommitment().CommitmentID
+			if len(latestCommitmentID) > 0 {
+				latestID = latestCommitmentID[0]
+			}
 
-		return blockID
-	}
-
-	return iotago.EmptyBlockID
+			return payloadForOutput(api, output, iotaOutput, latestID)
+		},
+		publishOnAllTopics,
+		true,
+	)
 }
 
-func transactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.TransactionID {
-	if strings.HasPrefix(topic, "transactions/") && strings.HasSuffix(topic, "/included-block") {
-		transactionIDHex := strings.Replace(topic, "transactions/", "", 1)
-		transactionIDHex = strings.Replace(transactionIDHex, "/included-block", "", 1)
+func (s *Server) publishSpentIfSubscribed(ctx context.Context, spent *inx.LedgerSpent, publishOnAllTopics bool, latestCommitmentID ...iotago.CommitmentID) error {
+	return s.publishOutputWithMetadataIfSubscribed(ctx,
+		spent.GetOutput(),
+		func(api iotago.API, iotaOutput iotago.Output) (*apimodels.OutputWithMetadataResponse, error) {
+			latestID := s.NodeBridge.LatestCommitment().CommitmentID
+			if len(latestCommitmentID) > 0 {
+				latestID = latestCommitmentID[0]
+			}
 
-		transactionID, err := iotago.TransactionIDFromHexString(transactionIDHex)
-		if err != nil || len(transactionID) != iotago.TransactionIDLength {
-			return emptyTransactionID
-		}
+			payload, err := payloadForOutput(api, spent.GetOutput(), iotaOutput, latestID)
+			if err != nil {
+				return nil, err
+			}
 
-		return transactionID
-	}
+			payload.Metadata.IsSpent = true
+			payload.Metadata.CommitmentIDSpent = spent.GetCommitmentIdSpent().Unwrap()
+			payload.Metadata.TransactionIDSpent = spent.UnwrapTransactionIDSpent()
 
-	return emptyTransactionID
-}
-
-func outputIDFromOutputsTopic(topic string) iotago.OutputID {
-	if strings.HasPrefix(topic, "outputs/") && !strings.HasPrefix(topic, "outputs/unlock") {
-		outputIDHex := strings.Replace(topic, "outputs/", "", 1)
-		outputID, err := iotago.OutputIDFromHexString(outputIDHex)
-		if err != nil {
-			return emptyOutputID
-		}
-
-		return outputID
-	}
-
-	return emptyOutputID
+			return payload, nil
+		},
+		publishOnAllTopics,
+		false,
+	)
 }
