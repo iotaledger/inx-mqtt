@@ -17,7 +17,7 @@ import (
 
 type Broker interface {
 	// Events returns the events of the broker.
-	Events() subscriptionmanager.Events[string, string]
+	Events() *subscriptionmanager.Events[string, string]
 	// Start the broker.
 	Start() error
 	// Stop the broker.
@@ -157,8 +157,8 @@ func NewBroker(brokerOpts ...Option) (Broker, error) {
 }
 
 // Events returns the events of the broker.
-func (b *broker) Events() subscriptionmanager.Events[string, string] {
-	return *b.subscriptionManager.Events()
+func (b *broker) Events() *subscriptionmanager.Events[string, string] {
+	return b.subscriptionManager.Events()
 }
 
 // Start the broker.

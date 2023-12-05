@@ -18,8 +18,8 @@ import (
 	"github.com/iotaledger/hive.go/web/subscriptionmanager"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/broker"
-	inx "github.com/iotaledger/inx/go"
 	iotago "github.com/iotaledger/iota.go/v4"
+	iotaapi "github.com/iotaledger/iota.go/v4/api"
 )
 
 const (
@@ -27,21 +27,23 @@ const (
 )
 
 const (
-	grpcListenToBlocks               = "INX.ListenToBlocks"
-	grpcListenToAcceptedBlocks       = "INX.ListenToAcceptedBlocks"
-	grpcListenToConfirmedBlocks      = "INX.ListenToConfirmedBlocks"
-	grpcListenToAcceptedTransactions = "INX.ListenToAcceptedTransactions"
-	grpcListenToLedgerUpdates        = "INX.ListenToLedgerUpdates"
+	GrpcListenToBlocks               = "INX.ListenToBlocks"
+	GrpcListenToAcceptedBlocks       = "INX.ListenToAcceptedBlocks"
+	GrpcListenToConfirmedBlocks      = "INX.ListenToConfirmedBlocks"
+	GrpcListenToAcceptedTransactions = "INX.ListenToAcceptedTransactions"
+	GrpcListenToLedgerUpdates        = "INX.ListenToLedgerUpdates"
 )
 
 const (
 	fetchTimeout = 5 * time.Second
 )
 
-type topicSubcription struct {
-	Count      int
-	CancelFunc func()
-	Identifier int
+type grpcSubcription struct {
+	//nolint:containedctx
+	context    context.Context
+	cancelFunc func()
+	count      int
+	identifier int
 }
 
 type Server struct {
@@ -53,7 +55,9 @@ type Server struct {
 	serverOptions   *Options
 
 	grpcSubscriptionsLock sync.Mutex
-	grpcSubscriptions     map[string]*topicSubcription
+	grpcSubscriptions     map[string]*grpcSubcription
+
+	cleanupFunc func()
 }
 
 func NewServer(log *logger.Logger,
@@ -70,13 +74,13 @@ func NewServer(log *logger.Logger,
 		shutdownHandler:   shutdownHandler,
 		MQTTBroker:        broker,
 		serverOptions:     opts,
-		grpcSubscriptions: make(map[string]*topicSubcription),
+		grpcSubscriptions: make(map[string]*grpcSubcription),
 	}
 
 	return s, nil
 }
 
-func (s *Server) Run(ctx context.Context) {
+func (s *Server) Start(ctx context.Context) error {
 
 	// register broker events
 	unhookBrokerEvents := lo.Batch(
@@ -95,7 +99,7 @@ func (s *Server) Run(ctx context.Context) {
 	)
 
 	if err := s.MQTTBroker.Start(); err != nil {
-		s.LogErrorfAndExit("failed to start MQTT broker: %s", err.Error())
+		return ierrors.Wrap(err, "failed to start MQTT broker")
 	}
 
 	if s.serverOptions.WebsocketEnabled {
@@ -118,24 +122,34 @@ func (s *Server) Run(ctx context.Context) {
 	// register node bridge events
 	unhookNodeBridgeEvents := lo.Batch(
 		s.NodeBridge.Events().LatestCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
-			if err := s.publishCommitmentOnTopicIfSubscribed(topicCommitmentsLatest, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
+			if err := s.publishCommitmentOnTopicIfSubscribed(TopicCommitmentsLatest, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
 				s.LogWarnf("failed to publish latest commitment: %s", err.Error())
 			}
 		}).Unhook,
 
 		s.NodeBridge.Events().LatestFinalizedCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
-			if err := s.publishCommitmentOnTopicIfSubscribed(topicCommitmentsFinalized, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
+			if err := s.publishCommitmentOnTopicIfSubscribed(TopicCommitmentsFinalized, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
 				s.LogWarnf("failed to publish latest finalized commitment: %s", err.Error())
 			}
 		}).Unhook,
 	)
 
-	s.LogInfo("Starting MQTT Broker ... done")
-	<-ctx.Done()
+	s.cleanupFunc = lo.Batch(
+		unhookBrokerEvents,
+		unhookNodeBridgeEvents,
+	)
 
+	s.LogInfo("Starting MQTT Broker ... done")
+
+	return nil
+}
+
+func (s *Server) Stop() error {
 	s.LogInfo("Stopping MQTT Broker ...")
-	unhookBrokerEvents()
-	unhookNodeBridgeEvents()
+
+	if s.cleanupFunc != nil {
+		s.cleanupFunc()
+	}
 
 	if s.serverOptions.WebsocketEnabled {
 		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
@@ -150,10 +164,25 @@ func (s *Server) Run(ctx context.Context) {
 	}
 
 	if err := s.MQTTBroker.Stop(); err != nil {
-		s.LogErrorf("failed to stop MQTT broker: %s", err.Error())
+		return ierrors.Wrap(err, "failed to stop MQTT broker")
 	}
 
 	s.LogInfo("Stopping MQTT Broker ...done")
+
+	return nil
+}
+
+func (s *Server) Run(ctx context.Context) {
+	if err := s.Start(ctx); err != nil {
+		s.LogErrorAndExit(err.Error())
+	}
+
+	<-ctx.Done()
+
+	//nolint:contextcheck // false positive
+	if err := s.Stop(); err != nil {
+		s.LogError(err.Error())
+	}
 }
 
 func (s *Server) onClientConnect(clientID string) {
@@ -168,45 +197,45 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 	s.LogDebugf("client %s subscribed to %s", clientID, topic)
 
 	switch topic {
-	case topicCommitmentsLatest:
+	case TopicCommitmentsLatest:
 		// we don't need to subscribe here, because this is handled by the node bridge events
 		// but we need to publish the latest payload once to the new subscriber
 		go s.fetchAndPublishLatestCommitmentTopic()
 
-	case topicCommitmentsFinalized:
+	case TopicCommitmentsFinalized:
 		// we don't need to subscribe here, because this is handled by the node bridge events
 		// but we need to publish the latest payload once to the new subscriber
 		go s.fetchAndPublishFinalizedCommitmentTopic()
 
-	case topicBlocks,
-		topicBlocksValidation,
-		topicBlocksBasic,
-		topicBlocksBasicTransaction,
-		topicBlocksBasicTransactionTaggedData,
-		topicBlocksBasicTaggedData:
-		s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
+	case TopicBlocks,
+		TopicBlocksValidation,
+		TopicBlocksBasic,
+		TopicBlocksBasicTransaction,
+		TopicBlocksBasicTransactionTaggedData,
+		TopicBlocksBasicTaggedData:
+		s.startListenIfNeeded(ctx, GrpcListenToBlocks, s.listenToBlocks)
 
-	case topicBlockMetadataAccepted:
-		s.startListenIfNeeded(ctx, grpcListenToAcceptedBlocks, s.listenToAcceptedBlocksMetadata)
+	case TopicBlockMetadataAccepted:
+		s.startListenIfNeeded(ctx, GrpcListenToAcceptedBlocks, s.listenToAcceptedBlocksMetadata)
 
-	case topicBlockMetadataConfirmed:
-		s.startListenIfNeeded(ctx, grpcListenToConfirmedBlocks, s.listenToConfirmedBlocksMetadata)
+	case TopicBlockMetadataConfirmed:
+		s.startListenIfNeeded(ctx, GrpcListenToConfirmedBlocks, s.listenToConfirmedBlocksMetadata)
 
 	default:
 		switch {
 		case strings.HasPrefix(topic, "blocks/basic/") && strings.Contains(topic, "tagged-data/"):
 			// topicBlocksBasicTransactionTaggedDataTag
 			// topicBlocksBasicTaggedDataTag
-			s.startListenIfNeeded(ctx, grpcListenToBlocks, s.listenToBlocks)
+			s.startListenIfNeeded(ctx, GrpcListenToBlocks, s.listenToBlocks)
 
 		case strings.HasPrefix(topic, "block-metadata/"):
 			// topicBlockMetadata
 			// HINT: it can't be topicBlockMetadataAccepted or topicBlockMetadataConfirmed because they are handled above
 			// so it must be a blockID
-			if blockID := blockIDFromBlockMetadataTopic(topic); !blockID.Empty() {
+			if blockID := BlockIDFromBlockMetadataTopic(topic); !blockID.Empty() {
 				// start listening to accepted and confirmed blocks if not already done to get state updates for that blockID
-				s.startListenIfNeeded(ctx, grpcListenToAcceptedBlocks, s.listenToAcceptedBlocksMetadata)
-				s.startListenIfNeeded(ctx, grpcListenToConfirmedBlocks, s.listenToConfirmedBlocksMetadata)
+				s.startListenIfNeeded(ctx, GrpcListenToAcceptedBlocks, s.listenToAcceptedBlocksMetadata)
+				s.startListenIfNeeded(ctx, GrpcListenToConfirmedBlocks, s.listenToConfirmedBlocksMetadata)
 
 				go s.fetchAndPublishBlockMetadata(ctx, blockID)
 			}
@@ -220,13 +249,13 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 			// topicOutputsByUnlockConditionAndAddress
 			// topicSpentOutputsByUnlockConditionAndAddress
 			// topicTransactionsIncludedBlock
-			s.startListenIfNeeded(ctx, grpcListenToAcceptedTransactions, s.listenToAcceptedTransactions)
-			s.startListenIfNeeded(ctx, grpcListenToLedgerUpdates, s.listenToLedgerUpdates)
+			s.startListenIfNeeded(ctx, GrpcListenToAcceptedTransactions, s.listenToAcceptedTransactions)
+			s.startListenIfNeeded(ctx, GrpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
-			if transactionID := transactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != iotago.EmptyTransactionID {
+			if transactionID := TransactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != iotago.EmptyTransactionID {
 				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
 			}
-			if outputID := outputIDFromOutputsTopic(topic); outputID != iotago.EmptyOutputID {
+			if outputID := OutputIDFromOutputsTopic(topic); outputID != iotago.EmptyOutputID {
 				go s.fetchAndPublishOutput(ctx, outputID)
 			}
 		}
@@ -238,36 +267,36 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 
 	switch topic {
 
-	case topicCommitmentsLatest,
-		topicCommitmentsFinalized:
+	case TopicCommitmentsLatest,
+		TopicCommitmentsFinalized:
 		// we don't need to unsubscribe here, because this is handled by the node bridge events anyway.
 
-	case topicBlocks,
-		topicBlocksValidation,
-		topicBlocksBasic,
-		topicBlocksBasicTransaction,
-		topicBlocksBasicTransactionTaggedData,
-		topicBlocksBasicTaggedData:
-		s.stopListenIfNeeded(grpcListenToBlocks)
+	case TopicBlocks,
+		TopicBlocksValidation,
+		TopicBlocksBasic,
+		TopicBlocksBasicTransaction,
+		TopicBlocksBasicTransactionTaggedData,
+		TopicBlocksBasicTaggedData:
+		s.stopListenIfNeeded(GrpcListenToBlocks)
 
-	case topicBlockMetadataAccepted:
-		s.stopListenIfNeeded(grpcListenToAcceptedBlocks)
+	case TopicBlockMetadataAccepted:
+		s.stopListenIfNeeded(GrpcListenToAcceptedBlocks)
 
-	case topicBlockMetadataConfirmed:
-		s.stopListenIfNeeded(grpcListenToConfirmedBlocks)
+	case TopicBlockMetadataConfirmed:
+		s.stopListenIfNeeded(GrpcListenToConfirmedBlocks)
 
 	default:
 		switch {
 		case strings.HasPrefix(topic, "blocks/basic/") && strings.Contains(topic, "tagged-data/"):
 			// topicBlocksBasicTransactionTaggedDataTag
 			// topicBlocksBasicTaggedDataTag
-			s.stopListenIfNeeded(grpcListenToBlocks)
+			s.stopListenIfNeeded(GrpcListenToBlocks)
 
 		case strings.HasPrefix(topic, "block-metadata/"):
 			// topicBlockMetadata
 			// it can't be topicBlockMetadataAccepted or topicBlockMetadataConfirmed because they are handled above
-			s.stopListenIfNeeded(grpcListenToAcceptedBlocks)
-			s.stopListenIfNeeded(grpcListenToConfirmedBlocks)
+			s.stopListenIfNeeded(GrpcListenToAcceptedBlocks)
+			s.stopListenIfNeeded(GrpcListenToConfirmedBlocks)
 
 		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
 			// topicOutputs
@@ -278,10 +307,68 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 			// topicOutputsByUnlockConditionAndAddress
 			// topicSpentOutputsByUnlockConditionAndAddress
 			// topicTransactionsIncludedBlock
-			s.stopListenIfNeeded(grpcListenToAcceptedTransactions)
-			s.stopListenIfNeeded(grpcListenToLedgerUpdates)
+			s.stopListenIfNeeded(GrpcListenToAcceptedTransactions)
+			s.stopListenIfNeeded(GrpcListenToLedgerUpdates)
 		}
 	}
+}
+
+func (s *Server) addGRPCSubscription(ctx context.Context, grpcCall string) *grpcSubcription {
+	s.grpcSubscriptionsLock.Lock()
+	defer s.grpcSubscriptionsLock.Unlock()
+
+	if sub, ok := s.grpcSubscriptions[grpcCall]; ok {
+		// subscription already exists
+		// => increase count to track subscribers
+		sub.count++
+
+		return nil
+	}
+
+	ctxCancel, cancel := context.WithCancel(ctx)
+
+	sub := &grpcSubcription{
+		count:      1,
+		context:    ctxCancel,
+		cancelFunc: cancel,
+		identifier: rand.Int(), //nolint:gosec // we do not care about weak random numbers here
+	}
+	s.grpcSubscriptions[grpcCall] = sub
+
+	return sub
+}
+
+func (s *Server) removeGRPCSubscription(grpcCall string, subscriptionIdentifier int) {
+	s.grpcSubscriptionsLock.Lock()
+	defer s.grpcSubscriptionsLock.Unlock()
+
+	if sub, ok := s.grpcSubscriptions[grpcCall]; ok && sub.identifier == subscriptionIdentifier {
+		// Only delete if it was not already replaced by a new one.
+		delete(s.grpcSubscriptions, grpcCall)
+	}
+}
+
+func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, listenFunc func(context.Context) error) {
+	sub := s.addGRPCSubscription(ctx, grpcCall)
+	if sub == nil {
+		// subscription already exists
+		return
+	}
+
+	go func() {
+		s.LogInfof("Listen to %s", grpcCall)
+
+		if err := listenFunc(sub.context); err != nil && !errors.Is(err, context.Canceled) {
+			s.LogErrorf("Finished listen to %s with error: %s", grpcCall, err.Error())
+			if status.Code(err) == codes.Unavailable && s.shutdownHandler != nil {
+				s.shutdownHandler.SelfShutdown("INX became unavailable", true)
+			}
+		} else {
+			s.LogInfof("Finished listen to %s", grpcCall)
+		}
+
+		s.removeGRPCSubscription(grpcCall, sub.identifier)
+	}()
 }
 
 func (s *Server) stopListenIfNeeded(grpcCall string) {
@@ -292,67 +379,19 @@ func (s *Server) stopListenIfNeeded(grpcCall string) {
 	if ok {
 		// subscription found
 		// decrease amount of subscribers
-		sub.Count--
+		sub.count--
 
-		if sub.Count == 0 {
+		if sub.count == 0 {
 			// => no more subscribers => stop listening
-			sub.CancelFunc()
+			sub.cancelFunc()
 			delete(s.grpcSubscriptions, grpcCall)
 		}
 	}
-}
-
-func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, listenFunc func(context.Context) error) {
-	s.grpcSubscriptionsLock.Lock()
-	defer s.grpcSubscriptionsLock.Unlock()
-
-	sub, ok := s.grpcSubscriptions[grpcCall]
-	if ok {
-		// subscription already exists
-		// => increase count to track subscribers
-		sub.Count++
-
-		return
-	}
-
-	ctxCancel, cancel := context.WithCancel(ctx)
-
-	//nolint:gosec // we do not care about weak random numbers here
-	subscriptionIdentifier := rand.Int()
-	s.grpcSubscriptions[grpcCall] = &topicSubcription{
-		Count:      1,
-		CancelFunc: cancel,
-		Identifier: subscriptionIdentifier,
-	}
-	go func() {
-		s.LogInfof("Listen to %s", grpcCall)
-		err := listenFunc(ctxCancel)
-		if err != nil && !errors.Is(err, context.Canceled) {
-			s.LogErrorf("Finished listen to %s with error: %s", grpcCall, err.Error())
-			if status.Code(err) == codes.Unavailable {
-				s.shutdownHandler.SelfShutdown("INX became unavailable", true)
-			}
-		} else {
-			s.LogInfof("Finished listen to %s", grpcCall)
-		}
-		s.grpcSubscriptionsLock.Lock()
-		sub, ok := s.grpcSubscriptions[grpcCall]
-		if ok && sub.Identifier == subscriptionIdentifier {
-			// Only delete if it was not already replaced by a new one.
-			delete(s.grpcSubscriptions, grpcCall)
-		}
-		s.grpcSubscriptionsLock.Unlock()
-	}()
 }
 
 func (s *Server) listenToBlocks(ctx context.Context) error {
-	stream, err := s.NodeBridge.Client().ListenToBlocks(ctx, &inx.NoParams{})
-	if err != nil {
-		return err
-	}
-
-	return nodebridge.ListenToStream(ctx, stream.Recv, func(block *inx.Block) error {
-		if err := s.publishBlockIfSubscribed(block.GetBlock()); err != nil {
+	return s.NodeBridge.ListenToBlocks(ctx, func(block *iotago.Block, rawData []byte) error {
+		if err := s.publishBlockIfSubscribed(block, rawData); err != nil {
 			s.LogErrorf("failed to publish block: %v", err)
 		}
 
@@ -362,13 +401,11 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToAcceptedBlocksMetadata(ctx context.Context) error {
-	stream, err := s.NodeBridge.Client().ListenToAcceptedBlocks(ctx, &inx.NoParams{})
-	if err != nil {
-		return err
-	}
-
-	return nodebridge.ListenToStream(ctx, stream.Recv, func(blockMetadata *inx.BlockMetadata) error {
-		if err := s.publishBlockMetadataOnTopicIfSubscribed(func() (*inx.BlockMetadata, error) { return blockMetadata, nil }, topicBlockMetadataAccepted); err != nil {
+	return s.NodeBridge.ListenToAcceptedBlocks(ctx, func(blockMetadata *iotaapi.BlockMetadataResponse) error {
+		if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*iotaapi.BlockMetadataResponse, error) { return blockMetadata, nil },
+			TopicBlockMetadataAccepted,
+			GetTopicBlockMetadata(blockMetadata.BlockID),
+		); err != nil {
 			s.LogErrorf("failed to publish accepted block metadata: %v", err)
 		}
 
@@ -378,13 +415,11 @@ func (s *Server) listenToAcceptedBlocksMetadata(ctx context.Context) error {
 }
 
 func (s *Server) listenToConfirmedBlocksMetadata(ctx context.Context) error {
-	stream, err := s.NodeBridge.Client().ListenToConfirmedBlocks(ctx, &inx.NoParams{})
-	if err != nil {
-		return err
-	}
-
-	return nodebridge.ListenToStream(ctx, stream.Recv, func(blockMetadata *inx.BlockMetadata) error {
-		if err := s.publishBlockMetadataOnTopicIfSubscribed(func() (*inx.BlockMetadata, error) { return blockMetadata, nil }, topicBlockMetadataConfirmed); err != nil {
+	return s.NodeBridge.ListenToConfirmedBlocks(ctx, func(blockMetadata *iotaapi.BlockMetadataResponse) error {
+		if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*iotaapi.BlockMetadataResponse, error) { return blockMetadata, nil },
+			TopicBlockMetadataConfirmed,
+			GetTopicBlockMetadata(blockMetadata.BlockID),
+		); err != nil {
 			s.LogErrorf("failed to publish confirmed block metadata: %v", err)
 		}
 
@@ -396,7 +431,7 @@ func (s *Server) listenToConfirmedBlocksMetadata(ctx context.Context) error {
 func (s *Server) listenToAcceptedTransactions(ctx context.Context) error {
 	return s.NodeBridge.ListenToAcceptedTransactions(ctx, func(payload *nodebridge.AcceptedTransaction) error {
 		for _, consumed := range payload.Consumed {
-			if err := s.publishSpentIfSubscribed(ctx, consumed, true); err != nil {
+			if err := s.publishOutputIfSubscribed(ctx, consumed, true); err != nil {
 				s.LogErrorf("failed to publish spent output in listen to accepted transaction update: %v", err)
 			}
 		}
@@ -415,7 +450,7 @@ func (s *Server) listenToAcceptedTransactions(ctx context.Context) error {
 func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 	return s.NodeBridge.ListenToLedgerUpdates(ctx, 0, 0, func(payload *nodebridge.LedgerUpdate) error {
 		for _, consumed := range payload.Consumed {
-			if err := s.publishSpentIfSubscribed(ctx, consumed, true); err != nil {
+			if err := s.publishOutputIfSubscribed(ctx, consumed, true); err != nil {
 				s.LogErrorf("failed to publish spent output in ledger update: %v", err)
 			}
 		}
@@ -432,7 +467,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 }
 
 func (s *Server) fetchAndPublishLatestCommitmentTopic() {
-	if err := s.publishCommitmentOnTopicIfSubscribed(topicCommitmentsLatest,
+	if err := s.publishCommitmentOnTopicIfSubscribed(TopicCommitmentsLatest,
 		func() (*iotago.Commitment, error) {
 			latestCommitment := s.NodeBridge.LatestCommitment()
 			if latestCommitment == nil {
@@ -447,7 +482,7 @@ func (s *Server) fetchAndPublishLatestCommitmentTopic() {
 }
 
 func (s *Server) fetchAndPublishFinalizedCommitmentTopic() {
-	if err := s.publishCommitmentOnTopicIfSubscribed(topicCommitmentsFinalized,
+	if err := s.publishCommitmentOnTopicIfSubscribed(TopicCommitmentsFinalized,
 		func() (*iotago.Commitment, error) {
 			latestFinalizedCommitment := s.NodeBridge.LatestFinalizedCommitment()
 			if latestFinalizedCommitment == nil {
@@ -462,34 +497,28 @@ func (s *Server) fetchAndPublishFinalizedCommitmentTopic() {
 }
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
-	if err := s.publishBlockMetadataOnTopicIfSubscribed(func() (*inx.BlockMetadata, error) {
-		resp, err := s.NodeBridge.Client().ReadBlockMetadata(ctx, inx.NewBlockId(blockID))
+	if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*iotaapi.BlockMetadataResponse, error) {
+		resp, err := s.NodeBridge.BlockMetadata(ctx, blockID)
 		if err != nil {
 			return nil, ierrors.Wrapf(err, "failed to retrieve block metadata %s", blockID.ToHex())
 		}
 
 		return resp, nil
-	}, getTopicBlockMetadata(blockID)); err != nil {
+	}, GetTopicBlockMetadata(blockID)); err != nil {
 		s.LogErrorf("failed to publish block metadata %s: %v", blockID.ToHex(), err)
 	}
 }
 
 func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.OutputID) {
 	// we need to fetch the output to figure out which topics we need to publish on
-	resp, err := s.NodeBridge.Client().ReadOutput(ctx, inx.NewOutputId(outputID))
+	output, err := s.NodeBridge.Output(ctx, outputID)
 	if err != nil {
 		s.LogErrorf("failed to retrieve output %s: %v", outputID.ToHex(), err)
 		return
 	}
 
-	if resp.GetSpent() != nil {
-		if err := s.publishSpentIfSubscribed(ctx, resp.GetSpent(), false, resp.GetLatestCommitmentId().Unwrap()); err != nil {
-			s.LogErrorf("failed to publish spent output %s: %v", outputID.ToHex(), err)
-		}
-	} else {
-		if err := s.publishOutputIfSubscribed(ctx, resp.GetOutput(), false, resp.GetLatestCommitmentId().Unwrap()); err != nil {
-			s.LogErrorf("failed to publish output %s: %v", outputID.ToHex(), err)
-		}
+	if err := s.publishOutputIfSubscribed(ctx, output, false); err != nil {
+		s.LogErrorf("failed to publish output %s: %v", outputID.ToHex(), err)
 	}
 }
 
@@ -505,17 +534,12 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 			ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
 			defer cancelFetch()
 
-			resp, err := s.NodeBridge.Client().ReadOutput(ctxFetch, inx.NewOutputId(outputID))
+			output, err := s.NodeBridge.Output(ctxFetch, outputID)
 			if err != nil {
 				return iotago.EmptyBlockID, ierrors.Wrapf(err, "failed to retrieve output of transaction %s", transactionID.ToHex())
 			}
 
-			inxOutput := resp.GetOutput()
-			if resp.GetSpent() != nil {
-				inxOutput = resp.GetSpent().GetOutput()
-			}
-
-			blockID = inxOutput.GetBlockId().Unwrap()
+			return output.Metadata.BlockID, nil
 		}
 
 		return blockID, nil
@@ -530,21 +554,21 @@ func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Contex
 
 	var block *iotago.Block
 	blockFunc := func() (*iotago.Block, error) {
+		if block != nil {
+			return block, nil
+		}
+
 		blockID, err := blockIDFunc()
 		if err != nil {
 			return nil, err
 		}
 
-		resp, err := s.NodeBridge.Client().ReadBlock(ctxFetch, inx.NewBlockId(blockID))
+		resp, err := s.NodeBridge.Block(ctxFetch, blockID)
 		if err != nil {
 			s.LogErrorf("failed to retrieve block %s :%v", blockID.ToHex(), err)
 			return nil, err
 		}
-
-		block, err = resp.UnwrapBlock(s.NodeBridge.APIProvider())
-		if err != nil {
-			return nil, err
-		}
+		block = resp
 
 		return block, nil
 	}
@@ -561,7 +585,7 @@ func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Contex
 		func() (any, error) {
 			return blockFunc()
 		},
-		getTransactionsIncludedBlockTopic(transactionID),
+		GetTopicTransactionsIncludedBlock(transactionID),
 	); err != nil {
 		s.LogErrorf("failed to publish transaction inclusion %s: %v", transactionID.ToHex(), err)
 	}
