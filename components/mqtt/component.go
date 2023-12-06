@@ -26,7 +26,7 @@ func init() {
 
 type dependencies struct {
 	dig.In
-	NodeBridge *nodebridge.NodeBridge
+	NodeBridge nodebridge.NodeBridge
 	Server     *mqtt.Server
 }
 
