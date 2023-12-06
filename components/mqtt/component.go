@@ -7,13 +7,11 @@ import (
 
 	"github.com/iotaledger/hive.go/app"
 	"github.com/iotaledger/hive.go/app/shutdown"
+	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
+	"github.com/iotaledger/inx-mqtt/pkg/broker"
 	"github.com/iotaledger/inx-mqtt/pkg/daemon"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
-)
-
-const (
-	APIRoute = "mqtt/v2"
 )
 
 func init() {
@@ -29,7 +27,7 @@ func init() {
 type dependencies struct {
 	dig.In
 	NodeBridge *nodebridge.NodeBridge
-	Server     *Server
+	Server     *mqtt.Server
 }
 
 var (
@@ -41,31 +39,40 @@ func provide(c *dig.Container) error {
 
 	type inDeps struct {
 		dig.In
-		NodeBridge *nodebridge.NodeBridge
+		NodeBridge nodebridge.NodeBridge
 		*shutdown.ShutdownHandler
 	}
 
-	return c.Provide(func(deps inDeps) (*Server, error) {
-		return NewServer(
+	return c.Provide(func(deps inDeps) (*mqtt.Server, error) {
+		broker, err := broker.NewBroker(
+			broker.WithBufferSize(ParamsMQTT.BufferSize),
+			broker.WithBufferBlockSize(ParamsMQTT.BufferBlockSize),
+			broker.WithMaxTopicSubscriptionsPerClient(ParamsMQTT.Subscriptions.MaxTopicSubscriptionsPerClient),
+			broker.WithTopicCleanupThresholdCount(ParamsMQTT.Subscriptions.TopicsCleanupThresholdCount),
+			broker.WithTopicCleanupThresholdRatio(ParamsMQTT.Subscriptions.TopicsCleanupThresholdRatio),
+			broker.WithWebsocketEnabled(ParamsMQTT.Websocket.Enabled),
+			broker.WithWebsocketBindAddress(ParamsMQTT.Websocket.BindAddress),
+			broker.WithTCPEnabled(ParamsMQTT.TCP.Enabled),
+			broker.WithTCPBindAddress(ParamsMQTT.TCP.BindAddress),
+			broker.WithTCPAuthEnabled(ParamsMQTT.TCP.Auth.Enabled),
+			broker.WithTCPAuthPasswordSalt(ParamsMQTT.TCP.Auth.PasswordSalt),
+			broker.WithTCPAuthUsers(ParamsMQTT.TCP.Auth.Users),
+			broker.WithTCPTLSEnabled(ParamsMQTT.TCP.TLS.Enabled),
+			broker.WithTCPTLSCertificatePath(ParamsMQTT.TCP.TLS.CertificatePath),
+			broker.WithTCPTLSPrivateKeyPath(ParamsMQTT.TCP.TLS.PrivateKeyPath),
+		)
+		if err != nil {
+			return nil, ierrors.Wrap(err, "failed to create MQTT broker")
+		}
+
+		return mqtt.NewServer(
 			Component.Logger(),
 			deps.NodeBridge,
+			broker,
 			deps.ShutdownHandler,
-			mqtt.WithBufferSize(ParamsMQTT.BufferSize),
-			mqtt.WithBufferBlockSize(ParamsMQTT.BufferBlockSize),
-			mqtt.WithMaxTopicSubscriptionsPerClient(ParamsMQTT.Subscriptions.MaxTopicSubscriptionsPerClient),
-			mqtt.WithTopicCleanupThresholdCount(ParamsMQTT.Subscriptions.TopicsCleanupThresholdCount),
-			mqtt.WithTopicCleanupThresholdRatio(ParamsMQTT.Subscriptions.TopicsCleanupThresholdRatio),
 			mqtt.WithWebsocketEnabled(ParamsMQTT.Websocket.Enabled),
 			mqtt.WithWebsocketBindAddress(ParamsMQTT.Websocket.BindAddress),
 			mqtt.WithWebsocketAdvertiseAddress(ParamsMQTT.Websocket.AdvertiseAddress),
-			mqtt.WithTCPEnabled(ParamsMQTT.TCP.Enabled),
-			mqtt.WithTCPBindAddress(ParamsMQTT.TCP.BindAddress),
-			mqtt.WithTCPAuthEnabled(ParamsMQTT.TCP.Auth.Enabled),
-			mqtt.WithTCPAuthPasswordSalt(ParamsMQTT.TCP.Auth.PasswordSalt),
-			mqtt.WithTCPAuthUsers(ParamsMQTT.TCP.Auth.Users),
-			mqtt.WithTCPTLSEnabled(ParamsMQTT.TCP.TLS.Enabled),
-			mqtt.WithTCPTLSCertificatePath(ParamsMQTT.TCP.TLS.CertificatePath),
-			mqtt.WithTCPTLSPrivateKeyPath(ParamsMQTT.TCP.TLS.PrivateKeyPath),
 		)
 	})
 }

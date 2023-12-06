@@ -3,7 +3,7 @@ package prometheus
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/iotaledger/inx-mqtt/components/mqtt"
+	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
 )
 
 var (
