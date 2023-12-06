@@ -40,7 +40,7 @@ func NewTestSuite(t *testing.T) *TestSuite {
 	rootLogger, err := logger.NewRootLogger(logger.DefaultCfg)
 	require.NoError(t, err)
 
-	api := iotago.V3API(iotago.NewV3ProtocolParameters())
+	api := tpkg.ZeroCostTestAPI
 
 	bridge := NewMockedNodeBridge(t, api)
 	broker := NewMockedBroker(t)
