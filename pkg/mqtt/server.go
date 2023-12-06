@@ -153,7 +153,6 @@ func (s *Server) Stop() error {
 
 	if s.serverOptions.WebsocketEnabled {
 		ctxUnregister, cancelUnregister := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelUnregister()
 
 		s.LogInfo("Removing API route ...")
 		//nolint:contextcheck // false positive
