@@ -2,10 +2,31 @@ package broker
 
 // Options are options around the broker.
 type Options struct {
-	// BufferSize is the size of the client buffers in bytes.
-	BufferSize int
-	// BufferBlockSize is the size per client buffer R/W block in bytes.
-	BufferBlockSize int
+	// WebsocketEnabled defines whether to enable the websocket connection of the MQTT broker.
+	WebsocketEnabled bool
+	// WebsocketBindAddress defines the websocket bind address on which the MQTT broker listens on.
+	WebsocketBindAddress string
+
+	// TCPEnabled defines whether to enable the TCP connection of the MQTT broker.
+	TCPEnabled bool
+	// TCPBindAddress defines the TCP bind address on which the MQTT broker listens on.
+	TCPBindAddress string
+	// TCPTLSEnabled defines whether to enable TLS for TCP connections.
+	TCPTLSEnabled bool
+	// TCPTLSCertificatePath is the path to the certificate file (x509 PEM) for TCP connections with TLS.
+	TCPTLSCertificatePath string
+	// TCPTLSPrivateKeyPath is the path to the private key file (x509 PEM) for TCP connections with TLS.
+	TCPTLSPrivateKeyPath string
+
+	// AuthPasswordSalt is the auth salt used for hashing the passwords of the users.
+	AuthPasswordSalt string
+	// AuthUsers is the list of allowed users with their password+salt as a scrypt hash.
+	AuthUsers map[string]string
+
+	// PublicTopics are the MQTT topics which can be subscribed to without authorization. Wildcards using * are allowed
+	PublicTopics []string
+	// ProtectedTopics are the MQTT topics which only can be subscribed to with valid authorization. Wildcards using * are allowed
+	ProtectedTopics []string
 
 	// MaxTopicSubscriptionsPerClient defines the maximum number of topic subscriptions per client before the client gets dropped (DOS protection).
 	MaxTopicSubscriptionsPerClient int
@@ -14,45 +35,32 @@ type Options struct {
 	// TopicCleanupThresholdRatio defines the ratio of subscribed topics to deleted topics that trigger a garbage collection of the SubscriptionManager.
 	TopicCleanupThresholdRatio float32
 
-	// WebsocketEnabled defines whether to enable the websocket connection of the MQTT broker.
-	WebsocketEnabled bool
-	// WebsocketBindAddress defines the websocket bind address on which the MQTT broker listens on.
-	WebsocketBindAddress string
-	// TCPEnabled defines whether to enable the TCP connection of the MQTT broker.
-	TCPEnabled bool
-	// TCPBindAddress defines the TCP bind address on which the MQTT broker listens on.
-	TCPBindAddress string
-
-	// TCPAuthEnabled defines whether to enable auth for TCP connections.
-	TCPAuthEnabled bool
-	// TCPAuthPasswordSalt is the auth salt used for hashing the passwords of the users.
-	TCPAuthPasswordSalt string
-	// TCPAuthUsers is the list of allowed users with their password+salt as a scrypt hash.
-	TCPAuthUsers map[string]string
-
-	// TCPTLSEnabled defines whether to enable TLS for TCP connections.
-	TCPTLSEnabled bool
-	// TCPTLSCertificatePath is the path to the certificate file (x509 PEM) for TCP connections with TLS.
-	TCPTLSCertificatePath string
-	// TCPTLSPrivateKeyPath is the path to the private key file (x509 PEM) for TCP connections with TLS.
-	TCPTLSPrivateKeyPath string
+	// MaximumClientWritesPending specifies the maximum number of pending message writes for a client.
+	MaximumClientWritesPending int
+	// ClientWriteBufferSize specifies the size of the client write buffer.
+	ClientWriteBufferSize int
+	// ClientNetReadBufferSize specifies the size of the client read buffer.
+	ClientReadBufferSize int
 }
 
 var defaultOpts = []Option{
-	WithBufferSize(0),
-	WithBufferBlockSize(0),
-	WithTopicCleanupThresholdCount(10000),
-	WithTopicCleanupThresholdRatio(1.0),
 	WithWebsocketEnabled(true),
 	WithWebsocketBindAddress("localhost:1888"),
 	WithTCPEnabled(false),
 	WithTCPBindAddress("localhost:1883"),
-	WithTCPAuthEnabled(false),
-	WithTCPAuthPasswordSalt("0000000000000000000000000000000000000000000000000000000000000000"),
-	WithTCPAuthUsers(map[string]string{}),
 	WithTCPTLSEnabled(false),
 	WithTCPTLSCertificatePath(""),
 	WithTCPTLSPrivateKeyPath(""),
+	WithAuthPasswordSalt("0000000000000000000000000000000000000000000000000000000000000000"),
+	WithAuthUsers(map[string]string{}),
+	WithPublicTopics([]string{"*"}),
+	WithProtectedTopics([]string{}),
+	WithMaxTopicSubscriptionsPerClient(1000),
+	WithTopicCleanupThresholdCount(10000),
+	WithTopicCleanupThresholdRatio(1.0),
+	WithMaximumClientWritesPending(1024 * 8),
+	WithClientWriteBufferSize(1024 * 2),
+	WithClientReadBufferSize(1024 * 2),
 }
 
 // applies the given Option.
@@ -70,41 +78,6 @@ func (bo *Options) ApplyOnDefault(opts ...Option) {
 
 // Option is a function which sets an option on a Options instance.
 type Option func(options *Options)
-
-// WithBufferSize sets the size of the client buffers in bytes.
-func WithBufferSize(bufferSize int) Option {
-	return func(options *Options) {
-		options.BufferSize = bufferSize
-	}
-}
-
-// WithBufferBlockSize sets the size per client buffer R/W block in bytes.
-func WithBufferBlockSize(bufferBlockSize int) Option {
-	return func(options *Options) {
-		options.BufferBlockSize = bufferBlockSize
-	}
-}
-
-// WithMaxTopicSubscriptionsPerClient sets the maximum number of topic subscriptions per client before the client gets dropped (DOS protection).
-func WithMaxTopicSubscriptionsPerClient(maxTopicSubscriptionsPerClient int) Option {
-	return func(options *Options) {
-		options.MaxTopicSubscriptionsPerClient = maxTopicSubscriptionsPerClient
-	}
-}
-
-// WithTopicCleanupThresholdCount sets the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
-func WithTopicCleanupThresholdCount(topicCleanupThresholdCount int) Option {
-	return func(options *Options) {
-		options.TopicCleanupThresholdCount = topicCleanupThresholdCount
-	}
-}
-
-// WithTopicCleanupThresholdRatio the ratio of subscribed topics to deleted topics that trigger a garbage collection of the SubscriptionManager.
-func WithTopicCleanupThresholdRatio(topicCleanupThresholdRatio float32) Option {
-	return func(options *Options) {
-		options.TopicCleanupThresholdRatio = topicCleanupThresholdRatio
-	}
-}
 
 // WithWebsocketEnabled sets whether to enable the websocket connection of the MQTT broker.
 func WithWebsocketEnabled(websocketEnabled bool) Option {
@@ -134,27 +107,6 @@ func WithTCPBindAddress(tcpBindAddress string) Option {
 	}
 }
 
-// WithTCPAuthEnabled sets whether to enable auth for TCP connections.
-func WithTCPAuthEnabled(tcpAuthEnabled bool) Option {
-	return func(options *Options) {
-		options.TCPAuthEnabled = tcpAuthEnabled
-	}
-}
-
-// WithTCPAuthPasswordSalt sets the auth salt used for hashing the passwords of the users.
-func WithTCPAuthPasswordSalt(tcpAuthPasswordSalt string) Option {
-	return func(options *Options) {
-		options.TCPAuthPasswordSalt = tcpAuthPasswordSalt
-	}
-}
-
-// WithTCPAuthUsers sets the list of allowed users with their password+salt as a scrypt hash.
-func WithTCPAuthUsers(tcpAuthUsers map[string]string) Option {
-	return func(options *Options) {
-		options.TCPAuthUsers = tcpAuthUsers
-	}
-}
-
 // WithTCPTLSEnabled sets whether to enable TLS for TCP connections.
 func WithTCPTLSEnabled(tcpTLSEnabled bool) Option {
 	return func(options *Options) {
@@ -173,5 +125,75 @@ func WithTCPTLSCertificatePath(tcpTLSCertificatePath string) Option {
 func WithTCPTLSPrivateKeyPath(tcpTLSPrivateKeyPath string) Option {
 	return func(options *Options) {
 		options.TCPTLSPrivateKeyPath = tcpTLSPrivateKeyPath
+	}
+}
+
+// WithAuthPasswordSalt sets the auth salt used for hashing the passwords of the users.
+func WithAuthPasswordSalt(tcpAuthPasswordSalt string) Option {
+	return func(options *Options) {
+		options.AuthPasswordSalt = tcpAuthPasswordSalt
+	}
+}
+
+// WithAuthUsers sets the list of allowed users with their password+salt as a scrypt hash.
+func WithAuthUsers(tcpAuthUsers map[string]string) Option {
+	return func(options *Options) {
+		options.AuthUsers = tcpAuthUsers
+	}
+}
+
+// WithPublicTopics sets the MQTT topics which can be subscribed to without authorization. Wildcards using * are allowed.
+func WithPublicTopics(publicTopics []string) Option {
+	return func(options *Options) {
+		options.PublicTopics = publicTopics
+	}
+}
+
+// WithProtectedTopics sets the MQTT topics which only can be subscribed to with valid authorization. Wildcards using * are allowed.
+func WithProtectedTopics(protectedTopics []string) Option {
+	return func(options *Options) {
+		options.ProtectedTopics = protectedTopics
+	}
+}
+
+// WithMaxTopicSubscriptionsPerClient sets the maximum number of topic subscriptions per client before the client gets dropped (DOS protection).
+func WithMaxTopicSubscriptionsPerClient(maxTopicSubscriptionsPerClient int) Option {
+	return func(options *Options) {
+		options.MaxTopicSubscriptionsPerClient = maxTopicSubscriptionsPerClient
+	}
+}
+
+// WithTopicCleanupThresholdCount sets the number of deleted topics that trigger a garbage collection of the SubscriptionManager.
+func WithTopicCleanupThresholdCount(topicCleanupThresholdCount int) Option {
+	return func(options *Options) {
+		options.TopicCleanupThresholdCount = topicCleanupThresholdCount
+	}
+}
+
+// WithTopicCleanupThresholdRatio the ratio of subscribed topics to deleted topics that trigger a garbage collection of the SubscriptionManager.
+func WithTopicCleanupThresholdRatio(topicCleanupThresholdRatio float32) Option {
+	return func(options *Options) {
+		options.TopicCleanupThresholdRatio = topicCleanupThresholdRatio
+	}
+}
+
+// WithMaximumClientWritesPending specifies the maximum number of pending message writes for a client.
+func WithMaximumClientWritesPending(maximumClientWritesPending int) Option {
+	return func(options *Options) {
+		options.MaximumClientWritesPending = maximumClientWritesPending
+	}
+}
+
+// WithClientWriteBufferSize specifies the size of the client write buffer.
+func WithClientWriteBufferSize(clientWriteBufferSize int) Option {
+	return func(options *Options) {
+		options.ClientWriteBufferSize = clientWriteBufferSize
+	}
+}
+
+// WithClientReadBufferSize specifies the size of the client read buffer.
+func WithClientReadBufferSize(clientReadBufferSize int) Option {
+	return func(options *Options) {
+		options.ClientReadBufferSize = clientReadBufferSize
 	}
 }

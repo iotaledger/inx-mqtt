@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -357,7 +356,7 @@ func (s *Server) startListenIfNeeded(ctx context.Context, grpcCall string, liste
 	go func() {
 		s.LogInfof("Listen to %s", grpcCall)
 
-		if err := listenFunc(sub.context); err != nil && !errors.Is(err, context.Canceled) {
+		if err := listenFunc(sub.context); err != nil && !ierrors.Is(err, context.Canceled) {
 			s.LogErrorf("Finished listen to %s with error: %s", grpcCall, err.Error())
 			if status.Code(err) == codes.Unavailable && s.shutdownHandler != nil {
 				s.shutdownHandler.SelfShutdown("INX became unavailable", true)

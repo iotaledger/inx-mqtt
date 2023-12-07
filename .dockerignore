@@ -20,6 +20,7 @@
 
 # Docker related files
 .dockerignore
+Dockerfile*
 docker-compose.yml
 
 # Documentation

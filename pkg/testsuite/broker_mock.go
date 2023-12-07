@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mochi-co/mqtt/server/system"
+	"github.com/mochi-mqtt/server/v2/system"
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/web/subscriptionmanager"

@@ -2,16 +2,15 @@ package broker
 
 import (
 	"crypto/tls"
-	"errors"
-	"fmt"
+	"math"
 	"net"
 
-	mqtt "github.com/mochi-co/mqtt/server"
-	"github.com/mochi-co/mqtt/server/events"
-	"github.com/mochi-co/mqtt/server/listeners"
-	"github.com/mochi-co/mqtt/server/listeners/auth"
-	"github.com/mochi-co/mqtt/server/system"
+	mqtt "github.com/mochi-mqtt/server/v2"
+	"github.com/mochi-mqtt/server/v2/listeners"
+	"github.com/mochi-mqtt/server/v2/system"
 
+	"github.com/iotaledger/hive.go/ierrors"
+	"github.com/iotaledger/hive.go/web/basicauth"
 	"github.com/iotaledger/hive.go/web/subscriptionmanager"
 )
 
@@ -48,28 +47,42 @@ func NewBroker(brokerOpts ...Option) (Broker, error) {
 	opts.ApplyOnDefault(brokerOpts...)
 
 	if !opts.WebsocketEnabled && !opts.TCPEnabled {
-		return nil, errors.New("at least websocket or TCP must be enabled")
+		return nil, ierrors.New("at least websocket or TCP must be enabled")
 	}
 
-	server := mqtt.NewServer(&mqtt.Options{
-		BufferSize:      opts.BufferSize,
-		BufferBlockSize: opts.BufferBlockSize,
-		InflightTTL:     30,
+	server := mqtt.New(&mqtt.Options{
+		// Capabilities defines the server features and behavior.
+		Capabilities: &mqtt.Capabilities{
+			MaximumSessionExpiryInterval: 0,              // we don't keep disconnected sessions
+			MaximumMessageExpiryInterval: 10,             // maximum message expiry if message expiry is 0 or over
+			ReceiveMaximum:               1024,           // maximum number of concurrent qos messages per client
+			MaximumQos:                   0,              // we don't support QoS 1 and 2, we only "fire and forget"
+			RetainAvailable:              0,              // retain messages is disabled in our usecase, we handle it ourselves
+			MaximumPacketSize:            1024,           // we allow some bytes for the CONNECT and SUBSCRIBE messages, but otherwise the client is not allowed to send any messages anyways
+			TopicAliasMaximum:            math.MaxUint16, // maximum topic alias value (default)
+			WildcardSubAvailable:         0,              // wildcard subscriptions are disabled because we handle them ourselves, not on server side
+			SubIDAvailable:               0,              // subscription identifiers are disabled, since we don't enable wildcard subscriptions in the server
+			SharedSubAvailable:           0,              // shared subscriptions are prohibited in our usecase
+			MinimumProtocolVersion:       3,              // minimum supported mqtt version (3.0.0) (default)
+			MaximumClientWritesPending:   int32(opts.MaximumClientWritesPending),
+		},
+		ClientNetWriteBufferSize: opts.ClientWriteBufferSize,
+		ClientNetReadBufferSize:  opts.ClientReadBufferSize,
+		InlineClient:             true, // this needs to be set to true to allow the broker to send messages itself
 	})
 
 	if opts.WebsocketEnabled {
 		// check websocket bind address
 		_, _, err := net.SplitHostPort(opts.WebsocketBindAddress)
 		if err != nil {
-			return nil, fmt.Errorf("parsing websocket bind address (%s) failed: %w", opts.WebsocketBindAddress, err)
+			return nil, ierrors.Errorf("parsing websocket bind address (%s) failed: %w", opts.WebsocketBindAddress, err)
 		}
 
-		ws := listeners.NewWebsocket("ws1", opts.WebsocketBindAddress)
-		if err := server.AddListener(ws, &listeners.Config{
-			Auth: &AuthAllowEveryone{},
-			TLS:  nil,
-		}); err != nil {
-			return nil, fmt.Errorf("adding websocket listener failed: %w", err)
+		// skip TLS config since it is added via traefik in our recommended setup anyway
+		ws := listeners.NewWebsocket("ws1", opts.WebsocketBindAddress, &listeners.Config{TLSConfig: nil})
+
+		if err := server.AddListener(ws); err != nil {
+			return nil, ierrors.Errorf("adding websocket listener failed: %w", err)
 		}
 	}
 
@@ -77,48 +90,34 @@ func NewBroker(brokerOpts ...Option) (Broker, error) {
 		// check tcp bind address
 		_, _, err := net.SplitHostPort(opts.TCPBindAddress)
 		if err != nil {
-			return nil, fmt.Errorf("parsing TCP bind address (%s) failed: %w", opts.TCPBindAddress, err)
-		}
-
-		tcp := listeners.NewTCP("t1", opts.TCPBindAddress)
-
-		var tcpAuthController auth.Controller
-		if opts.TCPAuthEnabled {
-			var err error
-			tcpAuthController, err = NewAuthAllowUsers(opts.TCPAuthPasswordSalt, opts.TCPAuthUsers)
-			if err != nil {
-				return nil, fmt.Errorf("enabling TCP Authentication failed: %w", err)
-			}
-		} else {
-			tcpAuthController = &AuthAllowEveryone{}
+			return nil, ierrors.Errorf("parsing TCP bind address (%s) failed: %w", opts.TCPBindAddress, err)
 		}
 
 		var tlsConfig *tls.Config
 		if opts.TCPTLSEnabled {
-			var err error
-
 			tlsConfig, err = NewTLSConfig(opts.TCPTLSCertificatePath, opts.TCPTLSPrivateKeyPath)
 			if err != nil {
-				return nil, fmt.Errorf("enabling TCP TLS failed: %w", err)
+				return nil, ierrors.Errorf("enabling TCP TLS failed: %w", err)
 			}
 		}
 
-		if err := server.AddListener(tcp, &listeners.Config{
-			Auth:      tcpAuthController,
+		tcp := listeners.NewTCP("t1", opts.TCPBindAddress, &listeners.Config{
 			TLSConfig: tlsConfig,
-		}); err != nil {
-			return nil, fmt.Errorf("adding TCP listener failed: %w", err)
+		})
+
+		if err := server.AddListener(tcp); err != nil {
+			return nil, ierrors.Errorf("adding TCP listener failed: %w", err)
 		}
 	}
 
-	s := subscriptionmanager.New(
+	subscriptionManager := subscriptionmanager.New(
 		subscriptionmanager.WithMaxTopicSubscriptionsPerClient[string, string](opts.MaxTopicSubscriptionsPerClient),
 		subscriptionmanager.WithCleanupThresholdCount[string, string](opts.TopicCleanupThresholdCount),
 		subscriptionmanager.WithCleanupThresholdRatio[string, string](opts.TopicCleanupThresholdRatio),
 	)
 
 	// this event is used to drop malicious clients
-	unhook := s.Events().DropClient.Hook(func(event *subscriptionmanager.DropClientEvent[string]) {
+	unhook := subscriptionManager.Events().DropClient.Hook(func(event *subscriptionmanager.DropClientEvent[string]) {
 		client, exists := server.Clients.Get(event.ClientID)
 		if !exists {
 			return
@@ -131,27 +130,25 @@ func NewBroker(brokerOpts ...Option) (Broker, error) {
 		server.Clients.Delete(event.ClientID)
 	}).Unhook
 
+	basicAuthManager, err := basicauth.NewBasicAuthManager(opts.AuthUsers, opts.AuthPasswordSalt)
+	if err != nil {
+		return nil, ierrors.Errorf("failed to create basic auth manager: %w", err)
+	}
+
 	// bind the broker events to the SubscriptionManager to track the subscriptions
-	server.Events.OnConnect = func(cl events.Client, pk events.Packet) {
-		s.Connect(cl.ID)
+	brokerHook, err := NewBrokerHook(subscriptionManager, basicAuthManager, opts.PublicTopics, opts.ProtectedTopics)
+	if err != nil {
+		return nil, ierrors.Errorf("failed to create broker hook: %w", err)
 	}
 
-	server.Events.OnDisconnect = func(cl events.Client, err error) {
-		s.Disconnect(cl.ID)
-	}
-
-	server.Events.OnSubscribe = func(topic string, cl events.Client, qos byte) {
-		s.Subscribe(cl.ID, topic)
-	}
-
-	server.Events.OnUnsubscribe = func(topic string, cl events.Client) {
-		s.Unsubscribe(cl.ID, topic)
+	if err := server.AddHook(brokerHook, nil); err != nil {
+		return nil, ierrors.Errorf("failed to add broker hook for subscriptions: %w", err)
 	}
 
 	return &broker{
 		server:              server,
 		opts:                opts,
-		subscriptionManager: s,
+		subscriptionManager: subscriptionManager,
 		unhook:              unhook,
 	}, nil
 }
@@ -182,12 +179,13 @@ func (b *broker) HasSubscribers(topic string) bool {
 
 // Send publishes a message.
 func (b *broker) Send(topic string, payload []byte) error {
-	return b.server.Publish(topic, payload, false)
+	// we publish all messages with QoS 0 ("fire and forget")
+	return b.server.Publish(topic, payload, false, 0)
 }
 
 // SystemInfo returns the metrics of the broker.
 func (b *broker) SystemInfo() *system.Info {
-	return b.server.System
+	return b.server.Info.Clone()
 }
 
 // SubscribersSize returns the size of the underlying map of the SubscriptionManager.
