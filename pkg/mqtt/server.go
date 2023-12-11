@@ -194,6 +194,9 @@ func (s *Server) onClientDisconnect(clientID string) {
 func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic string) {
 	s.LogDebugf("client %s subscribed to %s", clientID, topic)
 
+	// remove /raw suffix if present
+	topic = strings.TrimSuffix(topic, "/raw")
+
 	switch topic {
 	case TopicCommitmentsLatest:
 		// we don't need to subscribe here, because this is handled by the node bridge events
@@ -262,6 +265,9 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 
 func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 	s.LogDebugf("client %s unsubscribed from %s", clientID, topic)
+
+	// remove /raw suffix if present
+	topic = strings.TrimSuffix(topic, "/raw")
 
 	switch topic {
 
