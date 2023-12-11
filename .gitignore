@@ -3,3 +3,6 @@
 inx-mqtt
 go.work
 go.work.sum
+
+# IDE related files
+.vscode/

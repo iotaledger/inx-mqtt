@@ -131,21 +131,17 @@ Example:
 
 ## <a id="mqtt"></a> 4. MQTT
 
-| Name                                 | Description                                   | Type   | Default value |
-| ------------------------------------ | --------------------------------------------- | ------ | ------------- |
-| bufferSize                           | The size of the client buffers in bytes       | int    | 0             |
-| bufferBlockSize                      | The size per client buffer R/W block in bytes | int    | 0             |
-| [subscriptions](#mqtt_subscriptions) | Configuration for subscriptions               | object |               |
-| [websocket](#mqtt_websocket)         | Configuration for websocket                   | object |               |
-| [tcp](#mqtt_tcp)                     | Configuration for TCP                         | object |               |
-
-### <a id="mqtt_subscriptions"></a> Subscriptions
-
-| Name                           | Description                                                                                                    | Type  | Default value |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------- | ----- | ------------- |
-| maxTopicSubscriptionsPerClient | The maximum number of topic subscriptions per client before the client gets dropped (DOS protection)           | int   | 1000          |
-| topicsCleanupThresholdCount    | The number of deleted topics that trigger a garbage collection of the subscription manager                     | int   | 10000         |
-| topicsCleanupThresholdRatio    | The ratio of subscribed topics to deleted topics that trigger a garbage collection of the subscription manager | float | 1.0           |
+| Name                                 | Description                                                                                             | Type   | Default value                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------- |
+| [websocket](#mqtt_websocket)         | Configuration for websocket                                                                             | object |                                                                                  |
+| [tcp](#mqtt_tcp)                     | Configuration for TCP                                                                                   | object |                                                                                  |
+| [auth](#mqtt_auth)                   | Configuration for auth                                                                                  | object |                                                                                  |
+| publicTopics                         | The MQTT topics which can be subscribed to without authorization. Wildcards using \* are allowed         | array  | commitments/\*<br/>blocks/\*<br/>transactions/\*<br/>block-metadata/\*<br/>outputs/\* |
+| protectedTopics                      | The MQTT topics which only can be subscribed to with valid authorization. Wildcards using \* are allowed | array  |                                                                                  |
+| [subscriptions](#mqtt_subscriptions) | Configuration for subscriptions                                                                         | object |                                                                                  |
+| maximumClientWritesPending           | The maximum number of pending message writes for a client                                               | int    | 0                                                                                |
+| clientWriteBufferSize                | The size of the client write buffer                                                                     | int    | 0                                                                                |
+| clientReadBufferSize                 | The size of the client read buffer                                                                      | int    | 0                                                                                |
 
 ### <a id="mqtt_websocket"></a> Websocket
 
@@ -157,20 +153,11 @@ Example:
 
 ### <a id="mqtt_tcp"></a> TCP
 
-| Name                   | Description                                              | Type    | Default value    |
-| ---------------------- | -------------------------------------------------------- | ------- | ---------------- |
-| enabled                | Whether to enable the TCP connection of the MQTT broker  | boolean | false            |
-| bindAddress            | The TCP bind address on which the MQTT broker listens on | string  | "localhost:1883" |
-| [auth](#mqtt_tcp_auth) | Configuration for auth                                   | object  |                  |
-| [tls](#mqtt_tcp_tls)   | Configuration for TLS                                    | object  |                  |
-
-### <a id="mqtt_tcp_auth"></a> Auth
-
-| Name         | Description                                                         | Type    | Default value                                                      |
-| ------------ | ------------------------------------------------------------------- | ------- | ------------------------------------------------------------------ |
-| enabled      | Whether to enable auth for TCP connections                          | boolean | false                                                              |
-| passwordSalt | The auth salt used for hashing the passwords of the users           | string  | "0000000000000000000000000000000000000000000000000000000000000000" |
-| users        | The list of allowed users with their password+salt as a scrypt hash | object  | []                                                                 |
+| Name                 | Description                                              | Type    | Default value    |
+| -------------------- | -------------------------------------------------------- | ------- | ---------------- |
+| enabled              | Whether to enable the TCP connection of the MQTT broker  | boolean | false            |
+| bindAddress          | The TCP bind address on which the MQTT broker listens on | string  | "localhost:1883" |
+| [tls](#mqtt_tcp_tls) | Configuration for TLS                                    | object  |                  |
 
 ### <a id="mqtt_tcp_tls"></a> TLS
 
@@ -180,18 +167,26 @@ Example:
 | privateKeyPath  | The path to the private key file (x509 PEM) for TCP connections with TLS | string  | "private_key.pem" |
 | certificatePath | The path to the certificate file (x509 PEM) for TCP connections with TLS | string  | "certificate.pem" |
 
+### <a id="mqtt_auth"></a> Auth
+
+| Name         | Description                                                         | Type   | Default value                                                      |
+| ------------ | ------------------------------------------------------------------- | ------ | ------------------------------------------------------------------ |
+| passwordSalt | The auth salt used for hashing the passwords of the users           | string | "0000000000000000000000000000000000000000000000000000000000000000" |
+| users        | The list of allowed users with their password+salt as a scrypt hash | object | []                                                                 |
+
+### <a id="mqtt_subscriptions"></a> Subscriptions
+
+| Name                           | Description                                                                                                    | Type  | Default value |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------- | ----- | ------------- |
+| maxTopicSubscriptionsPerClient | The maximum number of topic subscriptions per client before the client gets dropped (DOS protection)           | int   | 1000          |
+| topicsCleanupThresholdCount    | The number of deleted topics that trigger a garbage collection of the subscription manager                     | int   | 10000         |
+| topicsCleanupThresholdRatio    | The ratio of subscribed topics to deleted topics that trigger a garbage collection of the subscription manager | float | 1.0           |
+
 Example:
 
 ```json
   {
     "mqtt": {
-      "bufferSize": 0,
-      "bufferBlockSize": 0,
-      "subscriptions": {
-        "maxTopicSubscriptionsPerClient": 1000,
-        "topicsCleanupThresholdCount": 10000,
-        "topicsCleanupThresholdRatio": 1
-      },
       "websocket": {
         "enabled": true,
         "bindAddress": "localhost:1888",
@@ -200,17 +195,32 @@ Example:
       "tcp": {
         "enabled": false,
         "bindAddress": "localhost:1883",
-        "auth": {
-          "enabled": false,
-          "passwordSalt": "0000000000000000000000000000000000000000000000000000000000000000",
-          "users": null
-        },
         "tls": {
           "enabled": false,
           "privateKeyPath": "private_key.pem",
           "certificatePath": "certificate.pem"
         }
-      }
+      },
+      "auth": {
+        "passwordSalt": "0000000000000000000000000000000000000000000000000000000000000000",
+        "users": null
+      },
+      "publicTopics": [
+        "commitments/*",
+        "blocks/*",
+        "transactions/*",
+        "block-metadata/*",
+        "outputs/*"
+      ],
+      "protectedTopics": [],
+      "subscriptions": {
+        "maxTopicSubscriptionsPerClient": 1000,
+        "topicsCleanupThresholdCount": 10000,
+        "topicsCleanupThresholdRatio": 1
+      },
+      "maximumClientWritesPending": 0,
+      "clientWriteBufferSize": 0,
+      "clientReadBufferSize": 0
     }
   }
 ```

@@ -45,21 +45,23 @@ func provide(c *dig.Container) error {
 
 	return c.Provide(func(deps inDeps) (*mqtt.Server, error) {
 		broker, err := broker.NewBroker(
-			broker.WithBufferSize(ParamsMQTT.BufferSize),
-			broker.WithBufferBlockSize(ParamsMQTT.BufferBlockSize),
-			broker.WithMaxTopicSubscriptionsPerClient(ParamsMQTT.Subscriptions.MaxTopicSubscriptionsPerClient),
-			broker.WithTopicCleanupThresholdCount(ParamsMQTT.Subscriptions.TopicsCleanupThresholdCount),
-			broker.WithTopicCleanupThresholdRatio(ParamsMQTT.Subscriptions.TopicsCleanupThresholdRatio),
 			broker.WithWebsocketEnabled(ParamsMQTT.Websocket.Enabled),
 			broker.WithWebsocketBindAddress(ParamsMQTT.Websocket.BindAddress),
 			broker.WithTCPEnabled(ParamsMQTT.TCP.Enabled),
 			broker.WithTCPBindAddress(ParamsMQTT.TCP.BindAddress),
-			broker.WithTCPAuthEnabled(ParamsMQTT.TCP.Auth.Enabled),
-			broker.WithTCPAuthPasswordSalt(ParamsMQTT.TCP.Auth.PasswordSalt),
-			broker.WithTCPAuthUsers(ParamsMQTT.TCP.Auth.Users),
 			broker.WithTCPTLSEnabled(ParamsMQTT.TCP.TLS.Enabled),
 			broker.WithTCPTLSCertificatePath(ParamsMQTT.TCP.TLS.CertificatePath),
 			broker.WithTCPTLSPrivateKeyPath(ParamsMQTT.TCP.TLS.PrivateKeyPath),
+			broker.WithAuthPasswordSalt(ParamsMQTT.Auth.PasswordSalt),
+			broker.WithAuthUsers(ParamsMQTT.Auth.Users),
+			broker.WithPublicTopics(ParamsMQTT.PublicTopics),
+			broker.WithProtectedTopics(ParamsMQTT.ProtectedTopics),
+			broker.WithMaxTopicSubscriptionsPerClient(ParamsMQTT.Subscriptions.MaxTopicSubscriptionsPerClient),
+			broker.WithTopicCleanupThresholdCount(ParamsMQTT.Subscriptions.TopicsCleanupThresholdCount),
+			broker.WithTopicCleanupThresholdRatio(ParamsMQTT.Subscriptions.TopicsCleanupThresholdRatio),
+			broker.WithMaximumClientWritesPending(ParamsMQTT.MaximumClientWritesPending),
+			broker.WithClientWriteBufferSize(ParamsMQTT.ClientWriteBufferSize),
+			broker.WithClientReadBufferSize(ParamsMQTT.ClientReadBufferSize),
 		)
 		if err != nil {
 			return nil, ierrors.Wrap(err, "failed to create MQTT broker")
