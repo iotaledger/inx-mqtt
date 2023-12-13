@@ -13,7 +13,7 @@ require (
 	github.com/iotaledger/inx/go v1.0.0-rc.2.0.20231206124145-f773dfe3927e
 	github.com/iotaledger/iota.go/v4 v4.0.0-20231206123921-2af411eef0b5
 	github.com/labstack/echo/v4 v4.11.3
-	github.com/mochi-mqtt/server/v2 v2.4.2
+	github.com/mochi-mqtt/server/v2 v2.4.3
 	github.com/prometheus/client_golang v1.17.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/dig v1.17.1
