@@ -939,8 +939,10 @@ func TestMqttTopics(t *testing.T) {
 			// collect all topics for later comparison with the received topics
 			collectedTopics := lo.Reduce(test.topics, func(collectedTopics map[string]int, topic *testTopic) map[string]int {
 				if topic.isPollingTarget {
-					collectedTopics[topic.topic]++
-					collectedTopics[topic.topic+"/raw"]++
+					// we need to add 2, because we subscribe to the json and the raw topic, and the initial "polled message"
+					// on subscribe also checks for subscribers on the each other topic
+					collectedTopics[topic.topic] += 2
+					collectedTopics[topic.topic+"/raw"] += 2
 				}
 				if topic.isEventTarget {
 					collectedTopics[topic.topic]++
