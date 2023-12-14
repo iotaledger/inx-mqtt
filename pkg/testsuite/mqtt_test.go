@@ -3,6 +3,7 @@ package testsuite_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -869,6 +870,7 @@ func TestMqttTopics(t *testing.T) {
 			ts.MQTTClientConnect("client1")
 			defer ts.MQTTClientDisconnect("client1")
 
+			topicsReceivedLock := sync.Mutex{}
 			topicsReceived := make(map[string]struct{})
 			subscriptionDone := false
 
@@ -887,6 +889,10 @@ func TestMqttTopics(t *testing.T) {
 
 					require.Equal(t, topic.topic, topicName, "topic mismatch")
 					require.Equal(t, test.jsonTarget, payloadBytes, "JSON payload mismatch")
+
+					topicsReceivedLock.Lock()
+					defer topicsReceivedLock.Unlock()
+
 					topicsReceived[topicName] = struct{}{}
 				})
 
@@ -905,11 +911,15 @@ func TestMqttTopics(t *testing.T) {
 
 					require.Equal(t, topicNameRaw, topicName, "topic mismatch")
 					require.Equal(t, test.rawTarget, payloadBytes, "raw payload mismatch")
+
+					topicsReceivedLock.Lock()
+					defer topicsReceivedLock.Unlock()
 					topicsReceived[topicName] = struct{}{}
 				})
 			}
 
 			// check that we don't receive topics we don't subscribe to
+			receivedTopicsLock := sync.Mutex{}
 			receivedTopics := make(map[string]int)
 			ts.MQTTSetHasSubscribersCallback(func(topicName string) {
 				for _, ignoredTopic := range test.topicsIgnore {
@@ -921,6 +931,8 @@ func TestMqttTopics(t *testing.T) {
 					}
 				}
 
+				receivedTopicsLock.Lock()
+				defer receivedTopicsLock.Unlock()
 				receivedTopics[topicName]++
 			})
 
@@ -969,6 +981,9 @@ func TestMqttTopics(t *testing.T) {
 			}
 
 			// check that we don't receive topics we don't subscribe to
+			topicsReceivedLock.Lock()
+			defer topicsReceivedLock.Unlock()
+
 			for topic, count := range receivedTopics {
 				if _, ok := collectedTopics[topic]; !ok {
 					require.Failf(t, "received topic that was not subscribed to", "topic: %s, count: %d", topic, count)
