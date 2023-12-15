@@ -139,9 +139,9 @@ Example:
 | publicTopics                         | The MQTT topics which can be subscribed to without authorization. Wildcards using \* are allowed         | array  | commitments/\*<br/>blocks/\*<br/>transactions/\*<br/>block-metadata/\*<br/>outputs/\* |
 | protectedTopics                      | The MQTT topics which only can be subscribed to with valid authorization. Wildcards using \* are allowed | array  |                                                                                  |
 | [subscriptions](#mqtt_subscriptions) | Configuration for subscriptions                                                                         | object |                                                                                  |
-| maximumClientWritesPending           | The maximum number of pending message writes for a client                                               | int    | 0                                                                                |
-| clientWriteBufferSize                | The size of the client write buffer                                                                     | int    | 0                                                                                |
-| clientReadBufferSize                 | The size of the client read buffer                                                                      | int    | 0                                                                                |
+| maximumClientWritesPending           | The maximum number of pending message writes for a client                                               | int    | 8192                                                                             |
+| clientWriteBufferSize                | The size of the client write buffer                                                                     | int    | 2048                                                                             |
+| clientReadBufferSize                 | The size of the client read buffer                                                                      | int    | 2048                                                                             |
 
 ### <a id="mqtt_websocket"></a> Websocket
 
@@ -218,9 +218,9 @@ Example:
         "topicsCleanupThresholdCount": 10000,
         "topicsCleanupThresholdRatio": 1
       },
-      "maximumClientWritesPending": 0,
-      "clientWriteBufferSize": 0,
-      "clientReadBufferSize": 0
+      "maximumClientWritesPending": 8192,
+      "clientWriteBufferSize": 2048,
+      "clientReadBufferSize": 2048
     }
   }
 ```

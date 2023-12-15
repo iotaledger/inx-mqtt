@@ -60,9 +60,9 @@
       "topicsCleanupThresholdCount": 10000,
       "topicsCleanupThresholdRatio": 1
     },
-    "maximumClientWritesPending": 0,
-    "clientWriteBufferSize": 0,
-    "clientReadBufferSize": 0
+    "maximumClientWritesPending": 8192,
+    "clientWriteBufferSize": 2048,
+    "clientReadBufferSize": 2048
   },
   "profiling": {
     "enabled": false,
