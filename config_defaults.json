@@ -10,18 +10,12 @@
     }
   },
   "logger": {
+    "name": "",
     "level": "info",
-    "disableCaller": true,
-    "disableStacktrace": false,
-    "stacktraceLevel": "panic",
-    "encoding": "console",
-    "encodingConfig": {
-      "timeEncoder": "rfc3339"
-    },
+    "timeFormat": "rfc3339",
     "outputPaths": [
       "stdout"
-    ],
-    "disableEvents": true
+    ]
   },
   "inx": {
     "address": "localhost:9029",
@@ -60,9 +54,9 @@
       "topicsCleanupThresholdCount": 10000,
       "topicsCleanupThresholdRatio": 1
     },
-    "maximumClientWritesPending": 0,
-    "clientWriteBufferSize": 0,
-    "clientReadBufferSize": 0
+    "maximumClientWritesPending": 8192,
+    "clientWriteBufferSize": 2048,
+    "clientReadBufferSize": 2048
   },
   "profiling": {
     "enabled": false,

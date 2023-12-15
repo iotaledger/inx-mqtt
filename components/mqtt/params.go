@@ -34,9 +34,9 @@ type ParametersMQTT struct {
 		TopicsCleanupThresholdRatio    float32 `default:"1.0" usage:"the ratio of subscribed topics to deleted topics that trigger a garbage collection of the subscription manager"`
 	}
 
-	MaximumClientWritesPending int `default:"0" usage:"the maximum number of pending message writes for a client"`
-	ClientWriteBufferSize      int `default:"0" usage:"the size of the client write buffer"`
-	ClientReadBufferSize       int `default:"0" usage:"the size of the client read buffer"`
+	MaximumClientWritesPending int `default:"8192" usage:"the maximum number of pending message writes for a client"`
+	ClientWriteBufferSize      int `default:"2048" usage:"the size of the client write buffer"`
+	ClientReadBufferSize       int `default:"2048" usage:"the size of the client read buffer"`
 }
 
 var ParamsMQTT = &ParametersMQTT{

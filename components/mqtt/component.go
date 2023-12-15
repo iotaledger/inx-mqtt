@@ -68,7 +68,7 @@ func provide(c *dig.Container) error {
 		}
 
 		return mqtt.NewServer(
-			Component.Logger(),
+			Component.Logger,
 			deps.NodeBridge,
 			broker,
 			deps.ShutdownHandler,
