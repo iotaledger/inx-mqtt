@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/iotaledger/hive.go/lo"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 	"github.com/iotaledger/hive.go/runtime/options"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/mqtt"
@@ -21,6 +21,7 @@ import (
 type TestSuite struct {
 	T *testing.T
 
+	logger     log.Logger
 	api        iotago.API
 	nodeBridge *MockedNodeBridge
 	broker     *MockedBroker
@@ -37,15 +38,14 @@ type TestSuite struct {
 func NewTestSuite(t *testing.T) *TestSuite {
 	t.Helper()
 
-	rootLogger, err := logger.NewRootLogger(logger.DefaultCfg)
-	require.NoError(t, err)
+	logger := log.NewLogger(log.WithName(t.Name()))
 
 	api := tpkg.ZeroCostTestAPI
 
 	bridge := NewMockedNodeBridge(t, api)
 	broker := NewMockedBroker(t)
 	server, err := mqtt.NewServer(
-		rootLogger.Named(t.Name()),
+		logger,
 		bridge,
 		broker,
 		nil,
@@ -54,6 +54,7 @@ func NewTestSuite(t *testing.T) *TestSuite {
 
 	return &TestSuite{
 		T:          t,
+		logger:     logger,
 		api:        api,
 		nodeBridge: bridge,
 		broker:     broker,

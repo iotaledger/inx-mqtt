@@ -13,7 +13,7 @@ import (
 	"github.com/iotaledger/hive.go/app/shutdown"
 	"github.com/iotaledger/hive.go/ierrors"
 	"github.com/iotaledger/hive.go/lo"
-	"github.com/iotaledger/hive.go/logger"
+	"github.com/iotaledger/hive.go/log"
 	"github.com/iotaledger/hive.go/web/subscriptionmanager"
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/broker"
@@ -46,7 +46,7 @@ type grpcSubcription struct {
 }
 
 type Server struct {
-	*logger.WrappedLogger
+	log.Logger
 
 	MQTTBroker      broker.Broker
 	NodeBridge      nodebridge.NodeBridge
@@ -59,7 +59,7 @@ type Server struct {
 	cleanupFunc func()
 }
 
-func NewServer(log *logger.Logger,
+func NewServer(log log.Logger,
 	bridge nodebridge.NodeBridge,
 	broker broker.Broker,
 	shutdownHandler *shutdown.ShutdownHandler,
@@ -68,7 +68,7 @@ func NewServer(log *logger.Logger,
 	opts.ApplyOnDefault(serverOpts...)
 
 	s := &Server{
-		WrappedLogger:     logger.NewWrappedLogger(log),
+		Logger:            log,
 		NodeBridge:        bridge,
 		shutdownHandler:   shutdownHandler,
 		MQTTBroker:        broker,
@@ -112,7 +112,7 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 
 		if err := s.NodeBridge.RegisterAPIRoute(ctxRegister, APIRoute, advertisedAddress, ""); err != nil {
-			s.LogErrorfAndExit("failed to register API route via INX: %s", err.Error())
+			s.LogFatalf("failed to register API route via INX: %s", err.Error())
 		}
 		s.LogInfo("Registering API route ... done")
 		cancelRegister()
@@ -172,7 +172,7 @@ func (s *Server) Stop() error {
 
 func (s *Server) Run(ctx context.Context) {
 	if err := s.Start(ctx); err != nil {
-		s.LogErrorAndExit(err.Error())
+		s.LogFatal(err.Error())
 	}
 
 	<-ctx.Done()
