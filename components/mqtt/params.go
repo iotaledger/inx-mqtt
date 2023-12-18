@@ -42,7 +42,7 @@ type ParametersMQTT struct {
 var ParamsMQTT = &ParametersMQTT{
 	PublicTopics: []string{
 		"commitments/*",
-		"blocks/*",
+		"blocks*",
 		"transactions/*",
 		"block-metadata/*",
 		"outputs/*",
