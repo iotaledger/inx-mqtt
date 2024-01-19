@@ -213,7 +213,8 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 		TopicBlocksBasic,
 		TopicBlocksBasicTransaction,
 		TopicBlocksBasicTransactionTaggedData,
-		TopicBlocksBasicTaggedData:
+		TopicBlocksBasicTaggedData,
+		TopicTransactions:
 		s.startListenIfNeeded(ctx, GrpcListenToBlocks, s.listenToBlocks)
 
 	case TopicBlockMetadataAccepted:
@@ -280,7 +281,8 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 		TopicBlocksBasic,
 		TopicBlocksBasicTransaction,
 		TopicBlocksBasicTransactionTaggedData,
-		TopicBlocksBasicTaggedData:
+		TopicBlocksBasicTaggedData,
+		TopicTransactions:
 		s.stopListenIfNeeded(GrpcListenToBlocks)
 
 	case TopicBlockMetadataAccepted:
@@ -396,6 +398,10 @@ func (s *Server) stopListenIfNeeded(grpcCall string) {
 func (s *Server) listenToBlocks(ctx context.Context) error {
 	return s.NodeBridge.ListenToBlocks(ctx, func(block *iotago.Block, rawData []byte) error {
 		if err := s.publishBlockIfSubscribed(block, rawData); err != nil {
+			s.LogErrorf("failed to publish block: %v", err)
+		}
+
+		if err := s.publishTransactionIfSubscribed(block); err != nil {
 			s.LogErrorf("failed to publish block: %v", err)
 		}
 

@@ -38,6 +38,7 @@ const (
 	TopicBlocksBasicTransactionTaggedData    = "blocks/basic/transaction/tagged-data"                 // iotago.Block (track all incoming basic blocks with transactions and tagged data)
 	TopicBlocksBasicTransactionTaggedDataTag = "blocks/basic/transaction/tagged-data/" + ParameterTag // iotago.Block (track all incoming basic blocks with transactions and specific tagged data)
 
+	TopicTransactions = "transactions" // iotago.Transaction (track all incoming transactions)
 	// single block on subscribe and changes in it's metadata (accepted, confirmed).
 	TopicTransactionsIncludedBlock = "transactions/" + ParameterTransactionID + "/included-block" // api.BlockWithMetadataResponse (track inclusion of a single transaction)
 

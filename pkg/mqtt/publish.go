@@ -156,6 +156,24 @@ func (s *Server) publishBlockIfSubscribed(block *iotago.Block, rawData []byte) e
 	}, blockTopics...)
 }
 
+func (s *Server) publishTransactionIfSubscribed(block *iotago.Block) error {
+	blk, ok := block.Body.(*iotago.BasicBlockBody)
+	if !ok {
+		return nil
+	}
+
+	signedTx, ok := blk.Payload.(*iotago.SignedTransaction)
+	if !ok {
+		return nil
+	}
+
+	return s.publishWithPayloadFuncsOnTopicsIfSubscribed(func() ([]byte, error) {
+		return signedTx.Transaction.API.JSONEncode(signedTx.Transaction)
+	}, func() ([]byte, error) {
+		return signedTx.Transaction.API.Encode(signedTx.Transaction)
+	}, TopicTransactions)
+}
+
 func (s *Server) publishBlockMetadataOnTopicsIfSubscribed(metadataFunc func() (*iotaapi.BlockMetadataResponse, error), topics ...string) error {
 	return s.publishPayloadOnTopicsIfSubscribed(
 		func() (iotago.API, error) { return s.NodeBridge.APIProvider().CommittedAPI(), nil },
