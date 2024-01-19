@@ -199,6 +199,36 @@ func TestMqttTopics(t *testing.T) {
 			}
 		}(),
 
+		// ok - Transactions
+		func() *test {
+			testTx := ts.NewTestTransaction(true)
+
+			return &test{
+				name: "ok - Transactions",
+				topics: []*testTopic{
+					{
+						topic:           mqtt.TopicTransactions,
+						isPollingTarget: false,
+						isEventTarget:   true,
+					},
+				},
+				topicsIgnore: []string{
+					mqtt.TopicBlocks,
+					mqtt.TopicBlocksBasic,
+					mqtt.TopicBlocksBasicTransaction,
+					mqtt.TopicBlocksBasicTransactionTaggedData,
+				},
+				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.Transaction)),
+				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.Transaction)),
+				postSubscribeFunc: func() {
+					ts.ReceiveBlock(&testsuite.MockedBlock{
+						Block:        testTx.Block,
+						RawBlockData: lo.PanicOnErr(ts.API().Encode(testTx.Block)),
+					})
+				},
+			}
+		}(),
+
 		// ok - Basic block with transaction and tagged data payload
 		func() *test {
 			testTx := ts.NewTestTransaction(true, tpkg.WithTxEssencePayload(
@@ -237,9 +267,11 @@ func TestMqttTopics(t *testing.T) {
 						isEventTarget:   true,
 					},
 				},
-				topicsIgnore: []string{},
-				jsonTarget:   lo.PanicOnErr(ts.API().JSONEncode(testTx.Block)),
-				rawTarget:    lo.PanicOnErr(ts.API().Encode(testTx.Block)),
+				topicsIgnore: []string{
+					mqtt.TopicTransactions,
+				},
+				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.Block)),
+				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.Block)),
 				postSubscribeFunc: func() {
 					ts.ReceiveBlock(&testsuite.MockedBlock{
 						Block:        testTx.Block,
