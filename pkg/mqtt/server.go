@@ -251,11 +251,15 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 			// topicOutputsByUnlockConditionAndAddress
 			// topicSpentOutputsByUnlockConditionAndAddress
 			// topicTransactionsIncludedBlock
+			// topicTransactions
 			s.startListenIfNeeded(ctx, GrpcListenToAcceptedTransactions, s.listenToAcceptedTransactions)
 			s.startListenIfNeeded(ctx, GrpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
 			if transactionID := TransactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != iotago.EmptyTransactionID {
 				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
+			}
+			if transactionID := TransactionIDFromTransactionTopic(topic); transactionID != iotago.EmptyTransactionID {
+				go s.fetchAndPublishTransactions(ctx, transactionID)
 			}
 			if outputID := OutputIDFromOutputsTopic(topic); outputID != iotago.EmptyOutputID {
 				go s.fetchAndPublishOutput(ctx, outputID)
@@ -598,5 +602,89 @@ func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Contex
 		GetTopicTransactionsIncludedBlock(transactionID),
 	); err != nil {
 		s.LogErrorf("failed to publish transaction inclusion %s: %v", transactionID.ToHex(), err)
+	}
+}
+
+func (s *Server) fetchAndPublishTransactions(ctx context.Context, transactionID iotago.TransactionID) {
+
+	var blockID iotago.BlockID
+	blockIDFunc := func() (iotago.BlockID, error) {
+		if blockID.Empty() {
+			// get the output and then the blockID of the transaction that created the output
+			outputID := iotago.OutputID{}
+			copy(outputID[:], transactionID[:])
+
+			ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
+			defer cancelFetch()
+
+			output, err := s.NodeBridge.Output(ctxFetch, outputID)
+			if err != nil {
+				return iotago.EmptyBlockID, ierrors.Wrapf(err, "failed to retrieve output of transaction %s", transactionID.ToHex())
+			}
+
+			return output.Metadata.BlockID, nil
+		}
+
+		return blockID, nil
+	}
+
+	s.fetchAndPublishTransaction(ctx, transactionID, blockIDFunc)
+}
+
+func (s *Server) fetchAndPublishTransaction(ctx context.Context, transactionID iotago.TransactionID, blockIDFunc func() (iotago.BlockID, error)) {
+	ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
+	defer cancelFetch()
+
+	var tx *iotago.Transaction
+	txFunc := func() (*iotago.Transaction, error) {
+		if tx != nil {
+			return tx, nil
+		}
+
+		blockID, err := blockIDFunc()
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := s.NodeBridge.Block(ctxFetch, blockID)
+		if err != nil {
+			s.LogErrorf("failed to retrieve block %s :%v", blockID.ToHex(), err)
+			return nil, err
+		}
+
+		basicBlk, ok := resp.Body.(*iotago.BasicBlockBody)
+		if !ok {
+			err := ierrors.Errorf("block body is not basic block %s ", blockID.ToHex())
+			s.LogError(err.Error())
+			return nil, err
+		}
+
+		signedTx, ok := basicBlk.Payload.(*iotago.SignedTransaction)
+		if !ok {
+			err := ierrors.Errorf("block payload is not signed transaction %s ", blockID.ToHex())
+			s.LogError(err.Error())
+			return nil, err
+		}
+
+		tx = signedTx.Transaction
+
+		return tx, nil
+	}
+
+	if err := s.publishPayloadOnTopicsIfSubscribed(
+		func() (iotago.API, error) {
+			tx, err := txFunc()
+			if err != nil {
+				return nil, err
+			}
+
+			return tx.API, nil
+		},
+		func() (any, error) {
+			return txFunc()
+		},
+		GetTopicTransaction(transactionID),
+	); err != nil {
+		s.LogErrorf("failed to publish transaction %s: %v", transactionID.ToHex(), err)
 	}
 }

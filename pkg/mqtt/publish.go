@@ -196,6 +196,13 @@ func (s *Server) publishOutputIfSubscribed(ctx context.Context, output *nodebrid
 					return output.Metadata.BlockID, nil
 				},
 			)
+
+			s.fetchAndPublishTransaction(ctx,
+				output.OutputID.TransactionID(),
+				func() (iotago.BlockID, error) {
+					return output.Metadata.BlockID, nil
+				},
+			)
 		}
 
 		bech32HRP := s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP()
