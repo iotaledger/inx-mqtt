@@ -242,7 +242,7 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 				go s.fetchAndPublishBlockMetadata(ctx, blockID)
 			}
 
-		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") || strings.HasPrefix(topic, "transaction-metadata/"):
 			// topicOutputs
 			// topicAccountOutputs
 			// topicAnchorOutputs
@@ -252,6 +252,7 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 			// topicSpentOutputsByUnlockConditionAndAddress
 			// topicTransactionsIncludedBlock
 			// topicTransactions
+			// topicTransactionMetadata
 			s.startListenIfNeeded(ctx, GrpcListenToAcceptedTransactions, s.listenToAcceptedTransactions)
 			s.startListenIfNeeded(ctx, GrpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
@@ -260,6 +261,9 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 			}
 			if transactionID := TransactionIDFromTransactionTopic(topic); transactionID != iotago.EmptyTransactionID {
 				go s.fetchAndPublishTransactions(ctx, transactionID)
+			}
+			if transactionID := TransactionIDFromTransactionMetadataTopic(topic); transactionID != iotago.EmptyTransactionID {
+				go s.fetchAndPublishTransactionMetadata(ctx, transactionID)
 			}
 			if outputID := OutputIDFromOutputsTopic(topic); outputID != iotago.EmptyOutputID {
 				go s.fetchAndPublishOutput(ctx, outputID)
@@ -308,7 +312,7 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 			s.stopListenIfNeeded(GrpcListenToAcceptedBlocks)
 			s.stopListenIfNeeded(GrpcListenToConfirmedBlocks)
 
-		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") || strings.HasPrefix(topic, "transaction-metadata/"):
 			// topicOutputs
 			// topicAccountOutputs
 			// topicAnchorOutputs
@@ -317,6 +321,8 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 			// topicOutputsByUnlockConditionAndAddress
 			// topicSpentOutputsByUnlockConditionAndAddress
 			// topicTransactionsIncludedBlock
+			// topicTransactions
+			// topicTransactionMetadata
 			s.stopListenIfNeeded(GrpcListenToAcceptedTransactions)
 			s.stopListenIfNeeded(GrpcListenToLedgerUpdates)
 		}
@@ -533,6 +539,19 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 
 	if err := s.publishOutputIfSubscribed(ctx, output, false); err != nil {
 		s.LogErrorf("failed to publish output %s: %v", outputID.ToHex(), err)
+	}
+}
+
+func (s *Server) fetchAndPublishTransactionMetadata(ctx context.Context, transactionID iotago.TransactionID) {
+	if err := s.publishTransactionMetadataOnTopicsIfSubscribed(func() (*iotaapi.TransactionMetadataResponse, error) {
+		resp, err := s.NodeBridge.TransactionMetadata(ctx, transactionID)
+		if err != nil {
+			return nil, ierrors.Wrapf(err, "failed to retrieve transaction metadata %s", transactionID.ToHex())
+		}
+
+		return resp, nil
+	}, GetTopicTransactionMetadata(transactionID)); err != nil {
+		s.LogErrorf("failed to publish transaction metadata %s: %v", transactionID.ToHex(), err)
 	}
 }
 
