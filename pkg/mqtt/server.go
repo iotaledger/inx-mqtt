@@ -241,7 +241,7 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 				go s.fetchAndPublishBlockMetadata(ctx, blockID)
 			}
 
-		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") || strings.HasPrefix(topic, "transaction-metadata/"):
 			// topicOutputs
 			// topicAccountOutputs
 			// topicAnchorOutputs
@@ -250,11 +250,15 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 			// topicOutputsByUnlockConditionAndAddress
 			// topicSpentOutputsByUnlockConditionAndAddress
 			// topicTransactionsIncludedBlock
+			// topicTransactionMetadata
 			s.startListenIfNeeded(ctx, GrpcListenToAcceptedTransactions, s.listenToAcceptedTransactions)
 			s.startListenIfNeeded(ctx, GrpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
 			if transactionID := TransactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != iotago.EmptyTransactionID {
 				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
+			}
+			if transactionID := TransactionIDFromTransactionMetadataTopic(topic); transactionID != iotago.EmptyTransactionID {
+				go s.fetchAndPublishTransactionMetadata(ctx, transactionID)
 			}
 			if outputID := OutputIDFromOutputsTopic(topic); outputID != iotago.EmptyOutputID {
 				go s.fetchAndPublishOutput(ctx, outputID)
@@ -302,7 +306,7 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 			s.stopListenIfNeeded(GrpcListenToAcceptedBlocks)
 			s.stopListenIfNeeded(GrpcListenToConfirmedBlocks)
 
-		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/"):
+		case strings.HasPrefix(topic, "outputs/") || strings.HasPrefix(topic, "transactions/") || strings.HasPrefix(topic, "transaction-metadata/"):
 			// topicOutputs
 			// topicAccountOutputs
 			// topicAnchorOutputs
@@ -311,6 +315,7 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 			// topicOutputsByUnlockConditionAndAddress
 			// topicSpentOutputsByUnlockConditionAndAddress
 			// topicTransactionsIncludedBlock
+			// topicTransactionMetadata
 			s.stopListenIfNeeded(GrpcListenToAcceptedTransactions)
 			s.stopListenIfNeeded(GrpcListenToLedgerUpdates)
 		}
@@ -446,6 +451,9 @@ func (s *Server) listenToAcceptedTransactions(ctx context.Context) error {
 			}
 		}
 
+		// publish the transaction metadata for this transaction in case someone subscribed to it
+		s.fetchAndPublishTransactionMetadata(ctx, payload.TransactionID)
+
 		// we don't return an error here, because we want to continue listening even if publishing fails once
 		return nil
 	})
@@ -462,6 +470,12 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 		for _, created := range payload.Created {
 			if err := s.publishOutputIfSubscribed(ctx, created, true); err != nil {
 				s.LogErrorf("failed to publish created output in ledger update: %v", err)
+			}
+
+			// If this is the first output in a transaction (index 0), publish the transaction
+			// metadata for the transaction that created this output in case someone subscribed to it.
+			if created.OutputID.Index() == 0 {
+				s.fetchAndPublishTransactionMetadata(ctx, created.OutputID.TransactionID())
 			}
 		}
 
@@ -523,6 +537,19 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 
 	if err := s.publishOutputIfSubscribed(ctx, output, false); err != nil {
 		s.LogErrorf("failed to publish output %s: %v", outputID.ToHex(), err)
+	}
+}
+
+func (s *Server) fetchAndPublishTransactionMetadata(ctx context.Context, transactionID iotago.TransactionID) {
+	if err := s.publishTransactionMetadataOnTopicsIfSubscribed(func() (*iotaapi.TransactionMetadataResponse, error) {
+		resp, err := s.NodeBridge.TransactionMetadata(ctx, transactionID)
+		if err != nil {
+			return nil, ierrors.Wrapf(err, "failed to retrieve transaction metadata %s", transactionID.ToHex())
+		}
+
+		return resp, nil
+	}, GetTopicTransactionMetadata(transactionID)); err != nil {
+		s.LogErrorf("failed to publish transaction metadata %s: %v", transactionID.ToHex(), err)
 	}
 }
 

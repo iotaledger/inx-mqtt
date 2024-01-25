@@ -125,6 +125,10 @@ func (ts *TestSuite) MockAddBlockMetadata(blockID iotago.BlockID, blockMetadata 
 	ts.nodeBridge.MockAddBlockMetadata(blockID, blockMetadata)
 }
 
+func (ts *TestSuite) MockAddTransactionMetadata(transactionID iotago.TransactionID, transactionMetadata *api.TransactionMetadataResponse) {
+	ts.nodeBridge.MockAddTransactionMetadata(transactionID, transactionMetadata)
+}
+
 func (ts *TestSuite) MockAddOutput(outputID iotago.OutputID, output *nodebridge.Output) {
 	ts.nodeBridge.MockAddOutput(outputID, output)
 }

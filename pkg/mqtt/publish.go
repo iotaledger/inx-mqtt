@@ -166,6 +166,16 @@ func (s *Server) publishBlockMetadataOnTopicsIfSubscribed(metadataFunc func() (*
 	)
 }
 
+func (s *Server) publishTransactionMetadataOnTopicsIfSubscribed(metadataFunc func() (*iotaapi.TransactionMetadataResponse, error), topics ...string) error {
+	return s.publishPayloadOnTopicsIfSubscribed(
+		func() (iotago.API, error) { return s.NodeBridge.APIProvider().CommittedAPI(), nil },
+		func() (any, error) {
+			return metadataFunc()
+		},
+		topics...,
+	)
+}
+
 func (s *Server) publishOutputIfSubscribed(ctx context.Context, output *nodebridge.Output, publishOnAllTopics bool) error {
 	topics := []string{GetTopicOutput(output.OutputID)}
 

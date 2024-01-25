@@ -27,9 +27,10 @@ type MockedNodeBridge struct {
 	mockedLatestCommitment          *nodebridge.Commitment
 	mockedLatestFinalizedCommitment *nodebridge.Commitment
 
-	mockedBlocks        map[iotago.BlockID]*iotago.Block
-	mockedBlockMetadata map[iotago.BlockID]*iotaapi.BlockMetadataResponse
-	mockedOutputs       map[iotago.OutputID]*nodebridge.Output
+	mockedBlocks              map[iotago.BlockID]*iotago.Block
+	mockedBlockMetadata       map[iotago.BlockID]*iotaapi.BlockMetadataResponse
+	mockedTransactionMetadata map[iotago.TransactionID]*iotaapi.TransactionMetadataResponse
+	mockedOutputs             map[iotago.OutputID]*nodebridge.Output
 
 	mockedStreamListenToBlocks               *MockedStream[MockedBlock]
 	mockedStreamListenToAcceptedBlocks       *MockedStream[inx.BlockMetadata]
@@ -50,10 +51,11 @@ func NewMockedNodeBridge(t *testing.T, api iotago.API) *MockedNodeBridge {
 			LatestCommitmentChanged:          event.New1[*nodebridge.Commitment](),
 			LatestFinalizedCommitmentChanged: event.New1[*nodebridge.Commitment](),
 		},
-		apiProvider:         iotago.SingleVersionProvider(api),
-		mockedBlocks:        make(map[iotago.BlockID]*iotago.Block),
-		mockedBlockMetadata: make(map[iotago.BlockID]*iotaapi.BlockMetadataResponse),
-		mockedOutputs:       make(map[iotago.OutputID]*nodebridge.Output),
+		apiProvider:               iotago.SingleVersionProvider(api),
+		mockedBlocks:              make(map[iotago.BlockID]*iotago.Block),
+		mockedBlockMetadata:       make(map[iotago.BlockID]*iotaapi.BlockMetadataResponse),
+		mockedTransactionMetadata: make(map[iotago.TransactionID]*iotaapi.TransactionMetadataResponse),
+		mockedOutputs:             make(map[iotago.OutputID]*nodebridge.Output),
 	}
 }
 
@@ -200,7 +202,11 @@ func (m *MockedNodeBridge) ListenToConfirmedBlocks(ctx context.Context, consumer
 
 // TransactionMetadata returns the transaction metadata for the given transaction ID.
 func (m *MockedNodeBridge) TransactionMetadata(ctx context.Context, transactionID iotago.TransactionID) (*iotaapi.TransactionMetadataResponse, error) {
-	panic("not implemented")
+	if transactionMetadata, ok := m.mockedTransactionMetadata[transactionID]; ok {
+		return transactionMetadata, nil
+	}
+
+	return nil, status.Errorf(codes.NotFound, "metadata for transaction %s not found", transactionID.ToHex())
 }
 
 func (m *MockedNodeBridge) Output(ctx context.Context, outputID iotago.OutputID) (*nodebridge.Output, error) {
@@ -344,6 +350,10 @@ func (m *MockedNodeBridge) MockAddBlock(blockID iotago.BlockID, block *iotago.Bl
 
 func (m *MockedNodeBridge) MockAddBlockMetadata(blockID iotago.BlockID, blockMetadata *iotaapi.BlockMetadataResponse) {
 	m.mockedBlockMetadata[blockID] = blockMetadata
+}
+
+func (m *MockedNodeBridge) MockAddTransactionMetadata(transactionID iotago.TransactionID, transactionMetadata *iotaapi.TransactionMetadataResponse) {
+	m.mockedTransactionMetadata[transactionID] = transactionMetadata
 }
 
 func (m *MockedNodeBridge) MockAddOutput(outputID iotago.OutputID, output *nodebridge.Output) {

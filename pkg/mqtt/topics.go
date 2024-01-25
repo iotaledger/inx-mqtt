@@ -40,6 +40,7 @@ const (
 
 	// single block on subscribe and changes in it's metadata (accepted, confirmed).
 	TopicTransactionsIncludedBlock = "transactions/" + ParameterTransactionID + "/included-block" // api.BlockWithMetadataResponse (track inclusion of a single transaction)
+	TopicTransactionMetadata       = "transaction-metadata/" + ParameterTransactionID             // api.TransactionMetadataResponse (track a specific transaction)
 
 	// single block on subscribe and changes in it's metadata (accepted, confirmed).
 	TopicBlockMetadata = "block-metadata/" + ParameterBlockID // api.BlockMetadataResponse (track changes to a single block)
@@ -102,6 +103,21 @@ func TransactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.Transa
 	return iotago.EmptyTransactionID
 }
 
+func TransactionIDFromTransactionMetadataTopic(topic string) iotago.TransactionID {
+	if strings.HasPrefix(topic, "transaction-metadata/") && strings.Count(topic, "/") == 1 {
+		transactionIDHex := strings.Replace(topic, "transaction-metadata/", "", 1)
+
+		transactionID, err := iotago.TransactionIDFromHexString(transactionIDHex)
+		if err != nil || len(transactionID) != iotago.TransactionIDLength {
+			return iotago.EmptyTransactionID
+		}
+
+		return transactionID
+	}
+
+	return iotago.EmptyTransactionID
+}
+
 func OutputIDFromOutputsTopic(topic string) iotago.OutputID {
 	if strings.HasPrefix(topic, "outputs/") && strings.Count(topic, "/") == 1 {
 		outputIDHex := strings.Replace(topic, "outputs/", "", 1)
@@ -134,6 +150,10 @@ func GetTopicOutput(outputID iotago.OutputID) string {
 
 func GetTopicTransactionsIncludedBlock(transactionID iotago.TransactionID) string {
 	return strings.ReplaceAll(TopicTransactionsIncludedBlock, ParameterTransactionID, transactionID.ToHex())
+}
+
+func GetTopicTransactionMetadata(transactionID iotago.TransactionID) string {
+	return strings.ReplaceAll(TopicTransactionMetadata, ParameterTransactionID, transactionID.ToHex())
 }
 
 func GetTopicAccountOutputs(accountID iotago.AccountID, hrp iotago.NetworkPrefix) string {
