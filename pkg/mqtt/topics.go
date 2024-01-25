@@ -38,10 +38,8 @@ const (
 	TopicBlocksBasicTransactionTaggedData    = "blocks/basic/transaction/tagged-data"                 // iotago.Block (track all incoming basic blocks with transactions and tagged data)
 	TopicBlocksBasicTransactionTaggedDataTag = "blocks/basic/transaction/tagged-data/" + ParameterTag // iotago.Block (track all incoming basic blocks with transactions and specific tagged data)
 
-	TopicTransactions = "transactions" // iotago.Transaction (track all incoming transactions)
 	// single block on subscribe and changes in it's metadata (accepted, confirmed).
 	TopicTransactionsIncludedBlock = "transactions/" + ParameterTransactionID + "/included-block" // api.BlockWithMetadataResponse (track inclusion of a single transaction)
-	TopicTransaction               = "transactions/" + ParameterTransactionID                     // iotago.Transaction (track a specific transaction)
 	TopicTransactionMetadata       = "transaction-metadata/" + ParameterTransactionID             // api.TransactionMetadataResponse (track a specific transaction)
 
 	// single block on subscribe and changes in it's metadata (accepted, confirmed).
@@ -105,23 +103,8 @@ func TransactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.Transa
 	return iotago.EmptyTransactionID
 }
 
-func TransactionIDFromTransactionTopic(topic string) iotago.TransactionID {
-	if strings.HasPrefix(topic, "transactions/") && !strings.HasSuffix(topic, "/included-block") {
-		transactionIDHex := strings.Replace(topic, "transactions/", "", 1)
-
-		transactionID, err := iotago.TransactionIDFromHexString(transactionIDHex)
-		if err != nil || len(transactionID) != iotago.TransactionIDLength {
-			return iotago.EmptyTransactionID
-		}
-
-		return transactionID
-	}
-
-	return iotago.EmptyTransactionID
-}
-
 func TransactionIDFromTransactionMetadataTopic(topic string) iotago.TransactionID {
-	if strings.HasPrefix(topic, "transaction-metadata/") {
+	if strings.HasPrefix(topic, "transaction-metadata/") && strings.Count(topic, "/") == 1 {
 		transactionIDHex := strings.Replace(topic, "transaction-metadata/", "", 1)
 
 		transactionID, err := iotago.TransactionIDFromHexString(transactionIDHex)
@@ -167,10 +150,6 @@ func GetTopicOutput(outputID iotago.OutputID) string {
 
 func GetTopicTransactionsIncludedBlock(transactionID iotago.TransactionID) string {
 	return strings.ReplaceAll(TopicTransactionsIncludedBlock, ParameterTransactionID, transactionID.ToHex())
-}
-
-func GetTopicTransaction(transactionID iotago.TransactionID) string {
-	return strings.ReplaceAll(TopicTransaction, ParameterTransactionID, transactionID.ToHex())
 }
 
 func GetTopicTransactionMetadata(transactionID iotago.TransactionID) string {

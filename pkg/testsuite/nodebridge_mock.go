@@ -206,7 +206,7 @@ func (m *MockedNodeBridge) TransactionMetadata(ctx context.Context, transactionI
 		return transactionMetadata, nil
 	}
 
-	return nil, status.Errorf(codes.NotFound, "transaction %s not found", transactionID.ToHex())
+	return nil, status.Errorf(codes.NotFound, "metadata for transaction %s not found", transactionID.ToHex())
 }
 
 func (m *MockedNodeBridge) Output(ctx context.Context, outputID iotago.OutputID) (*nodebridge.Output, error) {
