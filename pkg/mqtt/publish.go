@@ -111,23 +111,23 @@ func (s *Server) publishCommitmentOnTopicIfSubscribed(topic string, commitmentFu
 }
 
 func (s *Server) blockTopicsForBasicBlock(basicBlockBody *iotago.BasicBlockBody) []string {
-	blockTopics := []string{TopicBlocksBasic}
+	blockTopics := []string{iotaapi.TopicBlocksBasic}
 
 	switch payload := basicBlockBody.Payload.(type) {
 	case *iotago.SignedTransaction:
-		blockTopics = append(blockTopics, TopicBlocksBasicTransaction)
+		blockTopics = append(blockTopics, iotaapi.TopicBlocksBasicTransaction)
 
 		//nolint:gocritic // the type switch is nicer here
 		switch p := payload.Transaction.Payload.(type) {
 		case *iotago.TaggedData:
-			blockTopics = append(blockTopics, TopicBlocksBasicTransactionTaggedData)
+			blockTopics = append(blockTopics, iotaapi.TopicBlocksBasicTransactionTaggedData)
 			if len(p.Tag) > 0 {
 				blockTopics = append(blockTopics, GetTopicBlocksBasicTransactionTaggedDataTag(p.Tag))
 			}
 		}
 
 	case *iotago.TaggedData:
-		blockTopics = append(blockTopics, TopicBlocksBasicTaggedData)
+		blockTopics = append(blockTopics, iotaapi.TopicBlocksBasicTaggedData)
 		if len(payload.Tag) > 0 {
 			blockTopics = append(blockTopics, GetTopicBlocksBasicTaggedDataTag(payload.Tag))
 		}
@@ -138,13 +138,13 @@ func (s *Server) blockTopicsForBasicBlock(basicBlockBody *iotago.BasicBlockBody)
 
 func (s *Server) publishBlockIfSubscribed(block *iotago.Block, rawData []byte) error {
 	// always publish every block on the "blocks" topic
-	blockTopics := []string{TopicBlocks}
+	blockTopics := []string{iotaapi.TopicBlocks}
 
 	switch blockBody := block.Body.(type) {
 	case *iotago.BasicBlockBody:
 		blockTopics = append(blockTopics, s.blockTopicsForBasicBlock(blockBody)...)
 	case *iotago.ValidationBlockBody:
-		blockTopics = append(blockTopics, TopicBlocksValidation)
+		blockTopics = append(blockTopics, iotaapi.TopicBlocksValidation)
 	default:
 		s.LogWarnf("unknown block body type: %T", blockBody)
 	}
@@ -192,7 +192,7 @@ func (s *Server) publishOutputIfSubscribed(ctx context.Context, output *nodebrid
 
 		bech32HRP := s.NodeBridge.APIProvider().CommittedAPI().ProtocolParameters().Bech32HRP()
 		topics = append(topics, GetChainTopicsForOutput(output.OutputID, output.Output, bech32HRP)...)
-		topics = append(topics, GetUnlockConditionTopicsForOutput(TopicOutputsByUnlockConditionAndAddress, output.Output, bech32HRP)...)
+		topics = append(topics, GetUnlockConditionTopicsForOutput(iotaapi.TopicOutputsByUnlockConditionAndAddress, output.Output, bech32HRP)...)
 	}
 
 	var payload *iotaapi.OutputWithMetadataResponse

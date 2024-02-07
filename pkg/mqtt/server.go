@@ -121,13 +121,13 @@ func (s *Server) Start(ctx context.Context) error {
 	// register node bridge events
 	unhookNodeBridgeEvents := lo.Batch(
 		s.NodeBridge.Events().LatestCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
-			if err := s.publishCommitmentOnTopicIfSubscribed(TopicCommitmentsLatest, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
+			if err := s.publishCommitmentOnTopicIfSubscribed(iotaapi.TopicCommitmentsLatest, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
 				s.LogWarnf("failed to publish latest commitment: %s", err.Error())
 			}
 		}).Unhook,
 
 		s.NodeBridge.Events().LatestFinalizedCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
-			if err := s.publishCommitmentOnTopicIfSubscribed(TopicCommitmentsFinalized, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
+			if err := s.publishCommitmentOnTopicIfSubscribed(iotaapi.TopicCommitmentsFinalized, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
 				s.LogWarnf("failed to publish latest finalized commitment: %s", err.Error())
 			}
 		}).Unhook,
@@ -198,28 +198,28 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 	topic = strings.TrimSuffix(topic, "/raw")
 
 	switch topic {
-	case TopicCommitmentsLatest:
+	case iotaapi.TopicCommitmentsLatest:
 		// we don't need to subscribe here, because this is handled by the node bridge events
 		// but we need to publish the latest payload once to the new subscriber
 		go s.fetchAndPublishLatestCommitmentTopic()
 
-	case TopicCommitmentsFinalized:
+	case iotaapi.TopicCommitmentsFinalized:
 		// we don't need to subscribe here, because this is handled by the node bridge events
 		// but we need to publish the latest payload once to the new subscriber
 		go s.fetchAndPublishFinalizedCommitmentTopic()
 
-	case TopicBlocks,
-		TopicBlocksValidation,
-		TopicBlocksBasic,
-		TopicBlocksBasicTransaction,
-		TopicBlocksBasicTransactionTaggedData,
-		TopicBlocksBasicTaggedData:
+	case iotaapi.TopicBlocks,
+		iotaapi.TopicBlocksValidation,
+		iotaapi.TopicBlocksBasic,
+		iotaapi.TopicBlocksBasicTransaction,
+		iotaapi.TopicBlocksBasicTransactionTaggedData,
+		iotaapi.TopicBlocksBasicTaggedData:
 		s.startListenIfNeeded(ctx, GrpcListenToBlocks, s.listenToBlocks)
 
-	case TopicBlockMetadataAccepted:
+	case iotaapi.TopicBlockMetadataAccepted:
 		s.startListenIfNeeded(ctx, GrpcListenToAcceptedBlocks, s.listenToAcceptedBlocksMetadata)
 
-	case TopicBlockMetadataConfirmed:
+	case iotaapi.TopicBlockMetadataConfirmed:
 		s.startListenIfNeeded(ctx, GrpcListenToConfirmedBlocks, s.listenToConfirmedBlocksMetadata)
 
 	default:
@@ -275,22 +275,22 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 
 	switch topic {
 
-	case TopicCommitmentsLatest,
-		TopicCommitmentsFinalized:
+	case iotaapi.TopicCommitmentsLatest,
+		iotaapi.TopicCommitmentsFinalized:
 		// we don't need to unsubscribe here, because this is handled by the node bridge events anyway.
 
-	case TopicBlocks,
-		TopicBlocksValidation,
-		TopicBlocksBasic,
-		TopicBlocksBasicTransaction,
-		TopicBlocksBasicTransactionTaggedData,
-		TopicBlocksBasicTaggedData:
+	case iotaapi.TopicBlocks,
+		iotaapi.TopicBlocksValidation,
+		iotaapi.TopicBlocksBasic,
+		iotaapi.TopicBlocksBasicTransaction,
+		iotaapi.TopicBlocksBasicTransactionTaggedData,
+		iotaapi.TopicBlocksBasicTaggedData:
 		s.stopListenIfNeeded(GrpcListenToBlocks)
 
-	case TopicBlockMetadataAccepted:
+	case iotaapi.TopicBlockMetadataAccepted:
 		s.stopListenIfNeeded(GrpcListenToAcceptedBlocks)
 
-	case TopicBlockMetadataConfirmed:
+	case iotaapi.TopicBlockMetadataConfirmed:
 		s.stopListenIfNeeded(GrpcListenToConfirmedBlocks)
 
 	default:
@@ -412,7 +412,7 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 func (s *Server) listenToAcceptedBlocksMetadata(ctx context.Context) error {
 	return s.NodeBridge.ListenToAcceptedBlocks(ctx, func(blockMetadata *iotaapi.BlockMetadataResponse) error {
 		if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*iotaapi.BlockMetadataResponse, error) { return blockMetadata, nil },
-			TopicBlockMetadataAccepted,
+			iotaapi.TopicBlockMetadataAccepted,
 			GetTopicBlockMetadata(blockMetadata.BlockID),
 		); err != nil {
 			s.LogErrorf("failed to publish accepted block metadata: %v", err)
@@ -426,7 +426,7 @@ func (s *Server) listenToAcceptedBlocksMetadata(ctx context.Context) error {
 func (s *Server) listenToConfirmedBlocksMetadata(ctx context.Context) error {
 	return s.NodeBridge.ListenToConfirmedBlocks(ctx, func(blockMetadata *iotaapi.BlockMetadataResponse) error {
 		if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*iotaapi.BlockMetadataResponse, error) { return blockMetadata, nil },
-			TopicBlockMetadataConfirmed,
+			iotaapi.TopicBlockMetadataConfirmed,
 			GetTopicBlockMetadata(blockMetadata.BlockID),
 		); err != nil {
 			s.LogErrorf("failed to publish confirmed block metadata: %v", err)
@@ -485,7 +485,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 }
 
 func (s *Server) fetchAndPublishLatestCommitmentTopic() {
-	if err := s.publishCommitmentOnTopicIfSubscribed(TopicCommitmentsLatest,
+	if err := s.publishCommitmentOnTopicIfSubscribed(iotaapi.TopicCommitmentsLatest,
 		func() (*iotago.Commitment, error) {
 			latestCommitment := s.NodeBridge.LatestCommitment()
 			if latestCommitment == nil {
@@ -500,7 +500,7 @@ func (s *Server) fetchAndPublishLatestCommitmentTopic() {
 }
 
 func (s *Server) fetchAndPublishFinalizedCommitmentTopic() {
-	if err := s.publishCommitmentOnTopicIfSubscribed(TopicCommitmentsFinalized,
+	if err := s.publishCommitmentOnTopicIfSubscribed(iotaapi.TopicCommitmentsFinalized,
 		func() (*iotago.Commitment, error) {
 			latestFinalizedCommitment := s.NodeBridge.LatestFinalizedCommitment()
 			if latestFinalizedCommitment == nil {
