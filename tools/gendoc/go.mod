@@ -33,20 +33,20 @@ require (
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/iancoleman/orderedmap v0.3.0 // indirect
-	github.com/iotaledger/hive.go/constraints v0.0.0-20240125100708-ebf40dcf31fb // indirect
+	github.com/iotaledger/hive.go/constraints v0.0.0-20240126143305-9caf79103e85 // indirect
 	github.com/iotaledger/hive.go/core v1.0.0-rc.3.0.20240125100708-ebf40dcf31fb // indirect
-	github.com/iotaledger/hive.go/crypto v0.0.0-20240125100708-ebf40dcf31fb // indirect
-	github.com/iotaledger/hive.go/ds v0.0.0-20240125100708-ebf40dcf31fb // indirect
-	github.com/iotaledger/hive.go/ierrors v0.0.0-20240125100708-ebf40dcf31fb // indirect
-	github.com/iotaledger/hive.go/lo v0.0.0-20240125100708-ebf40dcf31fb // indirect
+	github.com/iotaledger/hive.go/crypto v0.0.0-20240126143305-9caf79103e85 // indirect
+	github.com/iotaledger/hive.go/ds v0.0.0-20240126143305-9caf79103e85 // indirect
+	github.com/iotaledger/hive.go/ierrors v0.0.0-20240126143305-9caf79103e85 // indirect
+	github.com/iotaledger/hive.go/lo v0.0.0-20240126143305-9caf79103e85 // indirect
 	github.com/iotaledger/hive.go/log v0.0.0-20240125100708-ebf40dcf31fb // indirect
-	github.com/iotaledger/hive.go/runtime v0.0.0-20240125100708-ebf40dcf31fb // indirect
+	github.com/iotaledger/hive.go/runtime v0.0.0-20240126143305-9caf79103e85 // indirect
 	github.com/iotaledger/hive.go/serializer/v2 v2.0.0-rc.1.0.20240125100708-ebf40dcf31fb // indirect
-	github.com/iotaledger/hive.go/stringify v0.0.0-20240125100708-ebf40dcf31fb // indirect
+	github.com/iotaledger/hive.go/stringify v0.0.0-20240126143305-9caf79103e85 // indirect
 	github.com/iotaledger/hive.go/web v0.0.0-20231219105941-542b1b724494 // indirect
 	github.com/iotaledger/inx-app v1.0.0-rc.3.0.20240125161730-faf053c90f7b // indirect
 	github.com/iotaledger/inx/go v1.0.0-rc.2.0.20240125161426-1846f6320506 // indirect
-	github.com/iotaledger/iota.go/v4 v4.0.0-20240125151023-8623fbbce914 // indirect
+	github.com/iotaledger/iota.go/v4 v4.0.0-20240213132736-0ff9bf7021ad // indirect
 	github.com/knadh/koanf v1.5.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/echo/v4 v4.11.4 // indirect
