@@ -10,7 +10,7 @@ import (
 )
 
 func BlockIDFromBlockMetadataTopic(topic string) iotago.BlockID {
-	if strings.HasPrefix(topic, "block-metadata/") && !(strings.HasSuffix(topic, api.TopicSuffixAccepted) || strings.HasSuffix(topic, api.TopicSuffixConfirmed)) {
+	if strings.HasPrefix(topic, "block-metadata/") && !(strings.HasSuffix(topic, api.EventAPITopicSuffixAccepted) || strings.HasSuffix(topic, api.EventAPITopicSuffixConfirmed)) {
 		blockIDHex := strings.Replace(topic, "block-metadata/", "", 1)
 		blockID, err := iotago.BlockIDFromHexString(blockIDHex)
 		if err != nil {
@@ -69,51 +69,51 @@ func OutputIDFromOutputsTopic(topic string) iotago.OutputID {
 }
 
 func GetTopicBlocksBasicTaggedDataTag(tag []byte) string {
-	return api.EndpointWithNamedParameterValue(api.TopicBlocksBasicTaggedDataTag, api.ParameterTag, hexutil.EncodeHex(tag))
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicBlocksBasicTaggedDataTag, api.ParameterTag, hexutil.EncodeHex(tag))
 }
 
 func GetTopicBlocksBasicTransactionTaggedDataTag(tag []byte) string {
-	return api.EndpointWithNamedParameterValue(api.TopicBlocksBasicTransactionTaggedDataTag, api.ParameterTag, hexutil.EncodeHex(tag))
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicBlocksBasicTransactionTaggedDataTag, api.ParameterTag, hexutil.EncodeHex(tag))
 }
 
 func GetTopicBlockMetadata(blockID iotago.BlockID) string {
-	return api.EndpointWithNamedParameterValue(api.TopicBlockMetadata, api.ParameterBlockID, blockID.ToHex())
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicBlockMetadata, api.ParameterBlockID, blockID.ToHex())
 }
 
 func GetTopicOutput(outputID iotago.OutputID) string {
-	return api.EndpointWithNamedParameterValue(api.TopicOutputs, api.ParameterOutputID, outputID.ToHex())
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicOutputs, api.ParameterOutputID, outputID.ToHex())
 }
 
-func GetTopicTransactionsIncludedBlock(transactionID iotago.TransactionID) string {
-	return api.EndpointWithNamedParameterValue(api.TopicTransactionsIncludedBlock, api.ParameterTransactionID, transactionID.ToHex())
+func GetTopicTransactionsIncludedBlockMetadata(transactionID iotago.TransactionID) string {
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicTransactionsIncludedBlockMetadata, api.ParameterTransactionID, transactionID.ToHex())
 }
 
 func GetTopicTransactionMetadata(transactionID iotago.TransactionID) string {
-	return api.EndpointWithNamedParameterValue(api.TopicTransactionMetadata, api.ParameterTransactionID, transactionID.ToHex())
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicTransactionMetadata, api.ParameterTransactionID, transactionID.ToHex())
 }
 
 func GetTopicAccountOutputs(accountID iotago.AccountID, hrp iotago.NetworkPrefix) string {
-	return api.EndpointWithNamedParameterValue(api.TopicAccountOutputs, api.ParameterAccountAddress, accountID.ToAddress().Bech32(hrp))
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicAccountOutputs, api.ParameterAccountAddress, accountID.ToAddress().Bech32(hrp))
 }
 
 func GetTopicAnchorOutputs(anchorID iotago.AnchorID, hrp iotago.NetworkPrefix) string {
-	return api.EndpointWithNamedParameterValue(api.TopicAnchorOutputs, api.ParameterAnchorAddress, anchorID.ToAddress().Bech32(hrp))
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicAnchorOutputs, api.ParameterAnchorAddress, anchorID.ToAddress().Bech32(hrp))
 }
 
 func GetTopicFoundryOutputs(foundryID iotago.FoundryID) string {
-	return api.EndpointWithNamedParameterValue(api.TopicFoundryOutputs, api.ParameterFoundryID, foundryID.ToHex())
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicFoundryOutputs, api.ParameterFoundryID, foundryID.ToHex())
 }
 
 func GetTopicNFTOutputs(nftID iotago.NFTID, hrp iotago.NetworkPrefix) string {
-	return api.EndpointWithNamedParameterValue(api.TopicNFTOutputs, api.ParameterNFTAddress, nftID.ToAddress().Bech32(hrp))
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicNFTOutputs, api.ParameterNFTAddress, nftID.ToAddress().Bech32(hrp))
 }
 
 func GetTopicDelegationOutputs(delegationID iotago.DelegationID) string {
-	return api.EndpointWithNamedParameterValue(api.TopicDelegationOutputs, api.ParameterDelegationID, delegationID.ToHex())
+	return api.EndpointWithNamedParameterValue(api.EventAPITopicDelegationOutputs, api.ParameterDelegationID, delegationID.ToHex())
 }
 
 func GetTopicOutputsByUnlockConditionAndAddress(condition api.EventAPIUnlockCondition, address iotago.Address, hrp iotago.NetworkPrefix) string {
-	topic := api.EndpointWithNamedParameterValue(api.TopicOutputsByUnlockConditionAndAddress, api.ParameterCondition, string(condition))
+	topic := api.EndpointWithNamedParameterValue(api.EventAPITopicOutputsByUnlockConditionAndAddress, api.ParameterCondition, string(condition))
 	return api.EndpointWithNamedParameterValue(topic, api.ParameterAddress, address.Bech32(hrp))
 }
 
@@ -134,47 +134,47 @@ func GetUnlockConditionTopicsForOutput(baseTopic string, output iotago.Output, b
 	address := unlockConditions.Address()
 	if address != nil {
 		addr := address.Address.Bech32(bech32HRP)
-		topics = append(topics, topicFunc(api.UnlockConditionAddress, addr))
+		topics = append(topics, topicFunc(api.EventAPIUnlockConditionAddress, addr))
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	storageReturn := unlockConditions.StorageDepositReturn()
 	if storageReturn != nil {
 		addr := storageReturn.ReturnAddress.Bech32(bech32HRP)
-		topics = append(topics, topicFunc(api.UnlockConditionStorageReturn, addr))
+		topics = append(topics, topicFunc(api.EventAPIUnlockConditionStorageReturn, addr))
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	expiration := unlockConditions.Expiration()
 	if expiration != nil {
 		addr := expiration.ReturnAddress.Bech32(bech32HRP)
-		topics = append(topics, topicFunc(api.UnlockConditionExpiration, addr))
+		topics = append(topics, topicFunc(api.EventAPIUnlockConditionExpiration, addr))
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	stateController := unlockConditions.StateControllerAddress()
 	if stateController != nil {
 		addr := stateController.Address.Bech32(bech32HRP)
-		topics = append(topics, topicFunc(api.UnlockConditionStateController, addr))
+		topics = append(topics, topicFunc(api.EventAPIUnlockConditionStateController, addr))
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	governor := unlockConditions.GovernorAddress()
 	if governor != nil {
 		addr := governor.Address.Bech32(bech32HRP)
-		topics = append(topics, topicFunc(api.UnlockConditionGovernor, addr))
+		topics = append(topics, topicFunc(api.EventAPIUnlockConditionGovernor, addr))
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	immutableAccount := unlockConditions.ImmutableAccount()
 	if immutableAccount != nil {
 		addr := immutableAccount.Address.Bech32(bech32HRP)
-		topics = append(topics, topicFunc(api.UnlockConditionImmutableAccount, addr))
+		topics = append(topics, topicFunc(api.EventAPIUnlockConditionImmutableAccount, addr))
 		addressesToPublishForAny[addr] = struct{}{}
 	}
 
 	for addr := range addressesToPublishForAny {
-		topics = append(topics, topicFunc(api.UnlockConditionAny, addr))
+		topics = append(topics, topicFunc(api.EventAPIUnlockConditionAny, addr))
 	}
 
 	return topics

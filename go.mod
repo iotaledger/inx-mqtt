@@ -11,7 +11,7 @@ require (
 	github.com/iotaledger/hive.go/web v0.0.0-20231219105941-542b1b724494
 	github.com/iotaledger/inx-app v1.0.0-rc.3.0.20240125161730-faf053c90f7b
 	github.com/iotaledger/inx/go v1.0.0-rc.2.0.20240125161426-1846f6320506
-	github.com/iotaledger/iota.go/v4 v4.0.0-20240207083640-60154d252608
+	github.com/iotaledger/iota.go/v4 v4.0.0-20240213132736-0ff9bf7021ad
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/mochi-mqtt/server/v2 v2.4.3
 	github.com/prometheus/client_golang v1.18.0
@@ -67,7 +67,6 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
-	github.com/samber/lo v1.39.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -75,7 +74,6 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/crypto v0.18.0 // indirect
-	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect

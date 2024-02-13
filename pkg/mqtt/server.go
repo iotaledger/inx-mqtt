@@ -18,7 +18,7 @@ import (
 	"github.com/iotaledger/inx-app/pkg/nodebridge"
 	"github.com/iotaledger/inx-mqtt/pkg/broker"
 	iotago "github.com/iotaledger/iota.go/v4"
-	iotaapi "github.com/iotaledger/iota.go/v4/api"
+	"github.com/iotaledger/iota.go/v4/api"
 )
 
 const (
@@ -121,13 +121,13 @@ func (s *Server) Start(ctx context.Context) error {
 	// register node bridge events
 	unhookNodeBridgeEvents := lo.Batch(
 		s.NodeBridge.Events().LatestCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
-			if err := s.publishCommitmentOnTopicIfSubscribed(iotaapi.TopicCommitmentsLatest, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
+			if err := s.publishCommitmentOnTopicIfSubscribed(api.EventAPITopicCommitmentsLatest, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
 				s.LogWarnf("failed to publish latest commitment: %s", err.Error())
 			}
 		}).Unhook,
 
 		s.NodeBridge.Events().LatestFinalizedCommitmentChanged.Hook(func(c *nodebridge.Commitment) {
-			if err := s.publishCommitmentOnTopicIfSubscribed(iotaapi.TopicCommitmentsFinalized, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
+			if err := s.publishCommitmentOnTopicIfSubscribed(api.EventAPITopicCommitmentsFinalized, func() (*iotago.Commitment, error) { return c.Commitment, nil }); err != nil {
 				s.LogWarnf("failed to publish latest finalized commitment: %s", err.Error())
 			}
 		}).Unhook,
@@ -198,28 +198,28 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 	topic = strings.TrimSuffix(topic, "/raw")
 
 	switch topic {
-	case iotaapi.TopicCommitmentsLatest:
+	case api.EventAPITopicCommitmentsLatest:
 		// we don't need to subscribe here, because this is handled by the node bridge events
 		// but we need to publish the latest payload once to the new subscriber
 		go s.fetchAndPublishLatestCommitmentTopic()
 
-	case iotaapi.TopicCommitmentsFinalized:
+	case api.EventAPITopicCommitmentsFinalized:
 		// we don't need to subscribe here, because this is handled by the node bridge events
 		// but we need to publish the latest payload once to the new subscriber
 		go s.fetchAndPublishFinalizedCommitmentTopic()
 
-	case iotaapi.TopicBlocks,
-		iotaapi.TopicBlocksValidation,
-		iotaapi.TopicBlocksBasic,
-		iotaapi.TopicBlocksBasicTransaction,
-		iotaapi.TopicBlocksBasicTransactionTaggedData,
-		iotaapi.TopicBlocksBasicTaggedData:
+	case api.EventAPITopicBlocks,
+		api.EventAPITopicBlocksValidation,
+		api.EventAPITopicBlocksBasic,
+		api.EventAPITopicBlocksBasicTransaction,
+		api.EventAPITopicBlocksBasicTransactionTaggedData,
+		api.EventAPITopicBlocksBasicTaggedData:
 		s.startListenIfNeeded(ctx, GrpcListenToBlocks, s.listenToBlocks)
 
-	case iotaapi.TopicBlockMetadataAccepted:
+	case api.EventAPITopicBlockMetadataAccepted:
 		s.startListenIfNeeded(ctx, GrpcListenToAcceptedBlocks, s.listenToAcceptedBlocksMetadata)
 
-	case iotaapi.TopicBlockMetadataConfirmed:
+	case api.EventAPITopicBlockMetadataConfirmed:
 		s.startListenIfNeeded(ctx, GrpcListenToConfirmedBlocks, s.listenToConfirmedBlocksMetadata)
 
 	default:
@@ -275,22 +275,22 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 
 	switch topic {
 
-	case iotaapi.TopicCommitmentsLatest,
-		iotaapi.TopicCommitmentsFinalized:
+	case api.EventAPITopicCommitmentsLatest,
+		api.EventAPITopicCommitmentsFinalized:
 		// we don't need to unsubscribe here, because this is handled by the node bridge events anyway.
 
-	case iotaapi.TopicBlocks,
-		iotaapi.TopicBlocksValidation,
-		iotaapi.TopicBlocksBasic,
-		iotaapi.TopicBlocksBasicTransaction,
-		iotaapi.TopicBlocksBasicTransactionTaggedData,
-		iotaapi.TopicBlocksBasicTaggedData:
+	case api.EventAPITopicBlocks,
+		api.EventAPITopicBlocksValidation,
+		api.EventAPITopicBlocksBasic,
+		api.EventAPITopicBlocksBasicTransaction,
+		api.EventAPITopicBlocksBasicTransactionTaggedData,
+		api.EventAPITopicBlocksBasicTaggedData:
 		s.stopListenIfNeeded(GrpcListenToBlocks)
 
-	case iotaapi.TopicBlockMetadataAccepted:
+	case api.EventAPITopicBlockMetadataAccepted:
 		s.stopListenIfNeeded(GrpcListenToAcceptedBlocks)
 
-	case iotaapi.TopicBlockMetadataConfirmed:
+	case api.EventAPITopicBlockMetadataConfirmed:
 		s.stopListenIfNeeded(GrpcListenToConfirmedBlocks)
 
 	default:
@@ -410,9 +410,9 @@ func (s *Server) listenToBlocks(ctx context.Context) error {
 }
 
 func (s *Server) listenToAcceptedBlocksMetadata(ctx context.Context) error {
-	return s.NodeBridge.ListenToAcceptedBlocks(ctx, func(blockMetadata *iotaapi.BlockMetadataResponse) error {
-		if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*iotaapi.BlockMetadataResponse, error) { return blockMetadata, nil },
-			iotaapi.TopicBlockMetadataAccepted,
+	return s.NodeBridge.ListenToAcceptedBlocks(ctx, func(blockMetadata *api.BlockMetadataResponse) error {
+		if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*api.BlockMetadataResponse, error) { return blockMetadata, nil },
+			api.EventAPITopicBlockMetadataAccepted,
 			GetTopicBlockMetadata(blockMetadata.BlockID),
 		); err != nil {
 			s.LogErrorf("failed to publish accepted block metadata: %v", err)
@@ -424,9 +424,9 @@ func (s *Server) listenToAcceptedBlocksMetadata(ctx context.Context) error {
 }
 
 func (s *Server) listenToConfirmedBlocksMetadata(ctx context.Context) error {
-	return s.NodeBridge.ListenToConfirmedBlocks(ctx, func(blockMetadata *iotaapi.BlockMetadataResponse) error {
-		if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*iotaapi.BlockMetadataResponse, error) { return blockMetadata, nil },
-			iotaapi.TopicBlockMetadataConfirmed,
+	return s.NodeBridge.ListenToConfirmedBlocks(ctx, func(blockMetadata *api.BlockMetadataResponse) error {
+		if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*api.BlockMetadataResponse, error) { return blockMetadata, nil },
+			api.EventAPITopicBlockMetadataConfirmed,
 			GetTopicBlockMetadata(blockMetadata.BlockID),
 		); err != nil {
 			s.LogErrorf("failed to publish confirmed block metadata: %v", err)
@@ -485,7 +485,7 @@ func (s *Server) listenToLedgerUpdates(ctx context.Context) error {
 }
 
 func (s *Server) fetchAndPublishLatestCommitmentTopic() {
-	if err := s.publishCommitmentOnTopicIfSubscribed(iotaapi.TopicCommitmentsLatest,
+	if err := s.publishCommitmentOnTopicIfSubscribed(api.EventAPITopicCommitmentsLatest,
 		func() (*iotago.Commitment, error) {
 			latestCommitment := s.NodeBridge.LatestCommitment()
 			if latestCommitment == nil {
@@ -500,7 +500,7 @@ func (s *Server) fetchAndPublishLatestCommitmentTopic() {
 }
 
 func (s *Server) fetchAndPublishFinalizedCommitmentTopic() {
-	if err := s.publishCommitmentOnTopicIfSubscribed(iotaapi.TopicCommitmentsFinalized,
+	if err := s.publishCommitmentOnTopicIfSubscribed(api.EventAPITopicCommitmentsFinalized,
 		func() (*iotago.Commitment, error) {
 			latestFinalizedCommitment := s.NodeBridge.LatestFinalizedCommitment()
 			if latestFinalizedCommitment == nil {
@@ -515,7 +515,7 @@ func (s *Server) fetchAndPublishFinalizedCommitmentTopic() {
 }
 
 func (s *Server) fetchAndPublishBlockMetadata(ctx context.Context, blockID iotago.BlockID) {
-	if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*iotaapi.BlockMetadataResponse, error) {
+	if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*api.BlockMetadataResponse, error) {
 		resp, err := s.NodeBridge.BlockMetadata(ctx, blockID)
 		if err != nil {
 			return nil, ierrors.Wrapf(err, "failed to retrieve block metadata %s", blockID.ToHex())
@@ -541,7 +541,7 @@ func (s *Server) fetchAndPublishOutput(ctx context.Context, outputID iotago.Outp
 }
 
 func (s *Server) fetchAndPublishTransactionMetadata(ctx context.Context, transactionID iotago.TransactionID) {
-	if err := s.publishTransactionMetadataOnTopicsIfSubscribed(func() (*iotaapi.TransactionMetadataResponse, error) {
+	if err := s.publishTransactionMetadataOnTopicsIfSubscribed(func() (*api.TransactionMetadataResponse, error) {
 		resp, err := s.NodeBridge.TransactionMetadata(ctx, transactionID)
 		if err != nil {
 			return nil, ierrors.Wrapf(err, "failed to retrieve transaction metadata %s", transactionID.ToHex())

@@ -65,7 +65,7 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - LatestCommitment",
 				topics: []*testTopic{
 					{
-						topic: api.TopicCommitmentsLatest,
+						topic: api.EventAPITopicCommitmentsLatest,
 						// we receive the topic once during the subscription
 						// and a second time when the commitment is received
 						isPollingTarget: true,
@@ -98,7 +98,7 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - LatestFinalizedCommitment",
 				topics: []*testTopic{
 					{
-						topic: api.TopicCommitmentsFinalized,
+						topic: api.EventAPITopicCommitmentsFinalized,
 						// we receive the topic once during the subscription
 						// and a second time when the commitment is received
 						isPollingTarget: true,
@@ -131,12 +131,12 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - Validation block",
 				topics: []*testTopic{
 					{
-						topic:           api.TopicBlocks,
+						topic:           api.EventAPITopicBlocks,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           api.TopicBlocksValidation,
+						topic:           api.EventAPITopicBlocksValidation,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
@@ -167,17 +167,17 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - Basic block with tagged data",
 				topics: []*testTopic{
 					{
-						topic:           api.TopicBlocks,
+						topic:           api.EventAPITopicBlocks,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           api.TopicBlocksBasic,
+						topic:           api.EventAPITopicBlocksBasic,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           api.TopicBlocksBasicTaggedData,
+						topic:           api.EventAPITopicBlocksBasicTaggedData,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
@@ -219,8 +219,8 @@ func TestMqttTopics(t *testing.T) {
 				topicsIgnore: []string{
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(transactionMetadataResponse)),
@@ -259,22 +259,22 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - Basic block with transaction and tagged data payload",
 				topics: []*testTopic{
 					{
-						topic:           api.TopicBlocks,
+						topic:           api.EventAPITopicBlocks,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           api.TopicBlocksBasic,
+						topic:           api.EventAPITopicBlocksBasic,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           api.TopicBlocksBasicTransaction,
+						topic:           api.EventAPITopicBlocksBasicTransaction,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           api.TopicBlocksBasicTransactionTaggedData,
+						topic:           api.EventAPITopicBlocksBasicTransactionTaggedData,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
@@ -368,7 +368,7 @@ func TestMqttTopics(t *testing.T) {
 					},
 				},
 				topicsIgnore: []string{
-					api.TopicBlockMetadataAccepted,
+					api.EventAPITopicBlockMetadataAccepted,
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(blockMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(blockMetadataResponse)),
@@ -398,7 +398,7 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - Basic block with tagged data - TopicBlockMetadataAccepted",
 				topics: []*testTopic{
 					{
-						topic:           api.TopicBlockMetadataAccepted,
+						topic:           api.EventAPITopicBlockMetadataAccepted,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
@@ -431,7 +431,7 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - Basic block with tagged data - TopicBlockMetadataConfirmed",
 				topics: []*testTopic{
 					{
-						topic:           api.TopicBlockMetadataConfirmed,
+						topic:           api.EventAPITopicBlockMetadataConfirmed,
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
@@ -461,11 +461,11 @@ func TestMqttTopics(t *testing.T) {
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
@@ -508,12 +508,12 @@ func TestMqttTopics(t *testing.T) {
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
@@ -552,14 +552,14 @@ func TestMqttTopics(t *testing.T) {
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionStateController, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionGovernor, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionStateController, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionGovernor, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
@@ -598,13 +598,13 @@ func TestMqttTopics(t *testing.T) {
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionImmutableAccount, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionImmutableAccount, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
@@ -643,12 +643,12 @@ func TestMqttTopics(t *testing.T) {
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
@@ -687,12 +687,12 @@ func TestMqttTopics(t *testing.T) {
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
@@ -746,38 +746,38 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - TopicOutputsByUnlockConditionAndAddress - Address/StorageReturn/Expiration",
 				topics: []*testTopic{
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, unlockAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, unlockAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, returnAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, returnAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, unlockAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, unlockAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionStorageReturn, returnAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionStorageReturn, returnAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionExpiration, returnAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionExpiration, returnAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
@@ -817,34 +817,34 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - TopicOutputsByUnlockConditionAndAddress - StateController/Governor",
 				topics: []*testTopic{
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, stateControllerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, stateControllerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, governorAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, governorAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionStateController, stateControllerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionStateController, stateControllerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionGovernor, governorAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionGovernor, governorAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
 					mqtt.GetTopicAnchorOutputs(anchorOutput.AnchorID, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
@@ -879,24 +879,24 @@ func TestMqttTopics(t *testing.T) {
 				name: "ok - TopicOutputsByUnlockConditionAndAddress - ImmutableAccount",
 				topics: []*testTopic{
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, immutableAccountAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, immutableAccountAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 					{
-						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionImmutableAccount, immutableAccountAddress, ts.API().ProtocolParameters().Bech32HRP()),
+						topic:           mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionImmutableAccount, immutableAccountAddress, ts.API().ProtocolParameters().Bech32HRP()),
 						isPollingTarget: false,
 						isEventTarget:   true,
 					},
 				},
 				topicsIgnore: []string{
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
 					mqtt.GetTopicFoundryOutputs(lo.PanicOnErr(foundryOutput.FoundryID())),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.SenderAddress, ts.API().ProtocolParameters().Bech32HRP()),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.OutputWithMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.OutputWithMetadataResponse)),
