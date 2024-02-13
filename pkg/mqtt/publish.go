@@ -182,7 +182,7 @@ func (s *Server) publishOutputIfSubscribed(ctx context.Context, output *nodebrid
 	if publishOnAllTopics {
 		// If this is the first output in a transaction (index 0), then check if someone is observing the transaction that generated this output
 		if output.Metadata.Spent == nil && output.OutputID.Index() == 0 {
-			s.fetchAndPublishTransactionInclusionWithBlock(ctx,
+			s.fetchAndPublishTransactionInclusionBlockMetadataWithBlockID(ctx,
 				output.OutputID.TransactionID(),
 				func() (iotago.BlockID, error) {
 					return output.Metadata.BlockID, nil

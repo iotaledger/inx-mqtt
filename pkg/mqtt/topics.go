@@ -23,10 +23,10 @@ func BlockIDFromBlockMetadataTopic(topic string) iotago.BlockID {
 	return iotago.EmptyBlockID
 }
 
-func TransactionIDFromTransactionsIncludedBlockTopic(topic string) iotago.TransactionID {
-	if strings.HasPrefix(topic, "transactions/") && strings.HasSuffix(topic, "/included-block") {
+func TransactionIDFromTransactionsIncludedBlockMetadataTopic(topic string) iotago.TransactionID {
+	if strings.HasPrefix(topic, "transactions/") && strings.HasSuffix(topic, "/included-block-metadata") {
 		transactionIDHex := strings.Replace(topic, "transactions/", "", 1)
-		transactionIDHex = strings.Replace(transactionIDHex, "/included-block", "", 1)
+		transactionIDHex = strings.Replace(transactionIDHex, "/included-block-metadata", "", 1)
 
 		transactionID, err := iotago.TransactionIDFromHexString(transactionIDHex)
 		if err != nil || len(transactionID) != iotago.TransactionIDLength {

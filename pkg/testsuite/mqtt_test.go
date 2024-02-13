@@ -221,7 +221,7 @@ func TestMqttTopics(t *testing.T) {
 					mqtt.GetTopicOutput(testTx.OutputID),
 					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+					mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 				},
 				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(transactionMetadataResponse)),
 				rawTarget:  lo.PanicOnErr(ts.API().Encode(transactionMetadataResponse)),
@@ -296,15 +296,26 @@ func TestMqttTopics(t *testing.T) {
 			}
 		}(),
 
-		// ok - Basic block with transaction and tagged data payload - TransactionsIncludedBlockTopic
+		// ok - Basic block with transaction and tagged data payload - TransactionsIncludedBlockMetadata
 		func() *test {
 			testTx := ts.NewTestTransaction(true)
 
+			blockMetadataResponse := &api.BlockMetadataResponse{
+				BlockID:            testTx.BlockID,
+				BlockState:         api.BlockStateAccepted,
+				BlockFailureReason: api.BlockFailureNone,
+				TransactionMetadata: &api.TransactionMetadataResponse{
+					TransactionID:            testTx.TransactionID,
+					TransactionState:         api.TransactionStateFailed,
+					TransactionFailureReason: api.TxFailureBICInputReferenceInvalid,
+				},
+			}
+
 			return &test{
-				name: "ok - Basic block with transaction and tagged data payload - TransactionsIncludedBlockTopic",
+				name: "ok - Basic block with transaction and tagged data payload - TransactionsIncludedBlockMetadata",
 				topics: []*testTopic{
 					{
-						topic:           mqtt.GetTopicTransactionsIncludedBlock(testTx.TransactionID),
+						topic:           mqtt.GetTopicTransactionsIncludedBlockMetadata(testTx.TransactionID),
 						isPollingTarget: true,
 						isEventTarget:   true,
 					},
@@ -312,19 +323,19 @@ func TestMqttTopics(t *testing.T) {
 				topicsIgnore: []string{
 					mqtt.GetTopicOutput(testTx.ConsumedOutputID),
 					mqtt.GetTopicOutput(testTx.OutputID),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
-					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.UnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAny, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
+					mqtt.GetTopicOutputsByUnlockConditionAndAddress(api.EventAPIUnlockConditionAddress, testTx.OwnerAddress, ts.API().ProtocolParameters().Bech32HRP()),
 					mqtt.GetTopicTransactionMetadata(testTx.TransactionID),
 				},
-				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(testTx.Block)),
-				rawTarget:  lo.PanicOnErr(ts.API().Encode(testTx.Block)),
+				jsonTarget: lo.PanicOnErr(ts.API().JSONEncode(blockMetadataResponse)),
+				rawTarget:  lo.PanicOnErr(ts.API().Encode(blockMetadataResponse)),
 				preSubscribeFunc: func() {
 					// we need to add the block to the nodebridge, so that it is available
-					// for the TransactionsIncludedBlockTopic
-					ts.MockAddBlock(testTx.BlockID, testTx.Block)
+					// for the TransactionsIncludedBlockMetadataTopic
+					ts.MockAddBlockMetadata(blockMetadataResponse.BlockID, blockMetadataResponse)
 
 					// we also need to add the first output to the nodebridge, so that it is available.
-					// this is also used by the TransactionsIncludedBlockTopic to get the blockID of the block containing the transaction of that output
+					// this is also used by the TransactionsIncludedBlockMetadataTopic to get the blockID of the block containing the transaction of that output
 					ts.MockAddOutput(testTx.OutputID, testTx.Output)
 				},
 				postSubscribeFunc: func() {

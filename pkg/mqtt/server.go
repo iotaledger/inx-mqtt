@@ -249,13 +249,13 @@ func (s *Server) onSubscribeTopic(ctx context.Context, clientID string, topic st
 			// topicNFTOutputs
 			// topicOutputsByUnlockConditionAndAddress
 			// topicSpentOutputsByUnlockConditionAndAddress
-			// topicTransactionsIncludedBlock
+			// topicTransactionsIncludedBlockMetadata
 			// topicTransactionMetadata
 			s.startListenIfNeeded(ctx, GrpcListenToAcceptedTransactions, s.listenToAcceptedTransactions)
 			s.startListenIfNeeded(ctx, GrpcListenToLedgerUpdates, s.listenToLedgerUpdates)
 
-			if transactionID := TransactionIDFromTransactionsIncludedBlockTopic(topic); transactionID != iotago.EmptyTransactionID {
-				go s.fetchAndPublishTransactionInclusion(ctx, transactionID)
+			if transactionID := TransactionIDFromTransactionsIncludedBlockMetadataTopic(topic); transactionID != iotago.EmptyTransactionID {
+				go s.fetchAndPublishTransactionInclusionBlockMetadata(ctx, transactionID)
 			}
 			if transactionID := TransactionIDFromTransactionMetadataTopic(topic); transactionID != iotago.EmptyTransactionID {
 				go s.fetchAndPublishTransactionMetadata(ctx, transactionID)
@@ -314,7 +314,7 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 			// topicNFTOutputs
 			// topicOutputsByUnlockConditionAndAddress
 			// topicSpentOutputsByUnlockConditionAndAddress
-			// topicTransactionsIncludedBlock
+			// topicTransactionsIncludedBlockMetadata
 			// topicTransactionMetadata
 			s.stopListenIfNeeded(GrpcListenToAcceptedTransactions)
 			s.stopListenIfNeeded(GrpcListenToLedgerUpdates)
@@ -553,7 +553,7 @@ func (s *Server) fetchAndPublishTransactionMetadata(ctx context.Context, transac
 	}
 }
 
-func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transactionID iotago.TransactionID) {
+func (s *Server) fetchAndPublishTransactionInclusionBlockMetadata(ctx context.Context, transactionID iotago.TransactionID) {
 
 	var blockID iotago.BlockID
 	blockIDFunc := func() (iotago.BlockID, error) {
@@ -576,17 +576,17 @@ func (s *Server) fetchAndPublishTransactionInclusion(ctx context.Context, transa
 		return blockID, nil
 	}
 
-	s.fetchAndPublishTransactionInclusionWithBlock(ctx, transactionID, blockIDFunc)
+	s.fetchAndPublishTransactionInclusionBlockMetadataWithBlockID(ctx, transactionID, blockIDFunc)
 }
 
-func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Context, transactionID iotago.TransactionID, blockIDFunc func() (iotago.BlockID, error)) {
+func (s *Server) fetchAndPublishTransactionInclusionBlockMetadataWithBlockID(ctx context.Context, transactionID iotago.TransactionID, blockIDFunc func() (iotago.BlockID, error)) {
 	ctxFetch, cancelFetch := context.WithTimeout(ctx, fetchTimeout)
 	defer cancelFetch()
 
-	var block *iotago.Block
-	blockFunc := func() (*iotago.Block, error) {
-		if block != nil {
-			return block, nil
+	var blockMetadata *api.BlockMetadataResponse
+	if err := s.publishBlockMetadataOnTopicsIfSubscribed(func() (*api.BlockMetadataResponse, error) {
+		if blockMetadata != nil {
+			return blockMetadata, nil
 		}
 
 		blockID, err := blockIDFunc()
@@ -594,30 +594,14 @@ func (s *Server) fetchAndPublishTransactionInclusionWithBlock(ctx context.Contex
 			return nil, err
 		}
 
-		resp, err := s.NodeBridge.Block(ctxFetch, blockID)
+		resp, err := s.NodeBridge.BlockMetadata(ctxFetch, blockID)
 		if err != nil {
-			s.LogErrorf("failed to retrieve block %s :%v", blockID.ToHex(), err)
-			return nil, err
+			return nil, ierrors.Wrapf(err, "failed to retrieve block metadata %s", blockID.ToHex())
 		}
-		block = resp
+		blockMetadata = resp
 
-		return block, nil
-	}
-
-	if err := s.publishPayloadOnTopicsIfSubscribed(
-		func() (iotago.API, error) {
-			block, err := blockFunc()
-			if err != nil {
-				return nil, err
-			}
-
-			return block.API, nil
-		},
-		func() (any, error) {
-			return blockFunc()
-		},
-		GetTopicTransactionsIncludedBlock(transactionID),
-	); err != nil {
+		return blockMetadata, nil
+	}, GetTopicTransactionsIncludedBlockMetadata(transactionID)); err != nil {
 		s.LogErrorf("failed to publish transaction inclusion %s: %v", transactionID.ToHex(), err)
 	}
 }
