@@ -301,14 +301,8 @@ func TestMqttTopics(t *testing.T) {
 			testTx := ts.NewTestTransaction(true)
 
 			blockMetadataResponse := &api.BlockMetadataResponse{
-				BlockID:            testTx.BlockID,
-				BlockState:         api.BlockStateAccepted,
-				BlockFailureReason: api.BlockFailureNone,
-				TransactionMetadata: &api.TransactionMetadataResponse{
-					TransactionID:            testTx.TransactionID,
-					TransactionState:         api.TransactionStateFailed,
-					TransactionFailureReason: api.TxFailureBICInputReferenceInvalid,
-				},
+				BlockID:    testTx.BlockID,
+				BlockState: api.BlockStateAccepted,
 			}
 
 			return &test{
@@ -359,14 +353,8 @@ func TestMqttTopics(t *testing.T) {
 		// ok - Basic block with tagged data - TopicBlockMetadata
 		func() *test {
 			blockMetadataResponse := &api.BlockMetadataResponse{
-				BlockID:            tpkg.RandBlockID(),
-				BlockState:         api.BlockStateAccepted,
-				BlockFailureReason: api.BlockFailureNone,
-				TransactionMetadata: &api.TransactionMetadataResponse{
-					TransactionID:            tpkg.RandTransactionID(),
-					TransactionState:         api.TransactionStateFailed,
-					TransactionFailureReason: api.TxFailureBICInputReferenceInvalid,
-				},
+				BlockID:    tpkg.RandBlockID(),
+				BlockState: api.BlockStateAccepted,
 			}
 
 			return &test{
@@ -395,14 +383,8 @@ func TestMqttTopics(t *testing.T) {
 		// ok - Basic block with tagged data - TopicBlockMetadataAccepted
 		func() *test {
 			blockMetadataResponse := &api.BlockMetadataResponse{
-				BlockID:            tpkg.RandBlockID(),
-				BlockState:         api.BlockStateAccepted,
-				BlockFailureReason: api.BlockFailureNone,
-				TransactionMetadata: &api.TransactionMetadataResponse{
-					TransactionID:            tpkg.RandTransactionID(),
-					TransactionState:         api.TransactionStateFailed,
-					TransactionFailureReason: api.TxFailureBICInputReferenceInvalid,
-				},
+				BlockID:    tpkg.RandBlockID(),
+				BlockState: api.BlockStateAccepted,
 			}
 
 			return &test{
@@ -428,14 +410,8 @@ func TestMqttTopics(t *testing.T) {
 		// ok - Basic block with tagged data - TopicBlockMetadataConfirmed
 		func() *test {
 			blockMetadataResponse := &api.BlockMetadataResponse{
-				BlockID:            tpkg.RandBlockID(),
-				BlockState:         api.BlockStateAccepted,
-				BlockFailureReason: api.BlockFailureNone,
-				TransactionMetadata: &api.TransactionMetadataResponse{
-					TransactionID:            tpkg.RandTransactionID(),
-					TransactionState:         api.TransactionStateFailed,
-					TransactionFailureReason: api.TxFailureBICInputReferenceInvalid,
-				},
+				BlockID:    tpkg.RandBlockID(),
+				BlockState: api.BlockStateAccepted,
 			}
 
 			return &test{
