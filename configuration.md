@@ -115,17 +115,17 @@ Example:
 
 ## <a id="mqtt"></a> 4. MQTT
 
-| Name                                 | Description                                                                                             | Type   | Default value                                                                   |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------- |
-| [websocket](#mqtt_websocket)         | Configuration for websocket                                                                             | object |                                                                                 |
-| [tcp](#mqtt_tcp)                     | Configuration for TCP                                                                                   | object |                                                                                 |
-| [auth](#mqtt_auth)                   | Configuration for auth                                                                                  | object |                                                                                 |
-| publicTopics                         | The MQTT topics which can be subscribed to without authorization. Wildcards using \* are allowed         | array  | commitments/\*<br/>blocks\*<br/>transactions/\*<br/>block-metadata/\*<br/>outputs/\* |
-| protectedTopics                      | The MQTT topics which only can be subscribed to with valid authorization. Wildcards using \* are allowed | array  |                                                                                 |
-| [subscriptions](#mqtt_subscriptions) | Configuration for subscriptions                                                                         | object |                                                                                 |
-| maximumClientWritesPending           | The maximum number of pending message writes for a client                                               | int    | 8192                                                                            |
-| clientWriteBufferSize                | The size of the client write buffer                                                                     | int    | 2048                                                                            |
-| clientReadBufferSize                 | The size of the client read buffer                                                                      | int    | 2048                                                                            |
+| Name                                 | Description                                                                                             | Type   | Default value                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------- |
+| [websocket](#mqtt_websocket)         | Configuration for websocket                                                                             | object |                                                                                                            |
+| [tcp](#mqtt_tcp)                     | Configuration for TCP                                                                                   | object |                                                                                                            |
+| [auth](#mqtt_auth)                   | Configuration for auth                                                                                  | object |                                                                                                            |
+| publicTopics                         | The MQTT topics which can be subscribed to without authorization. Wildcards using \* are allowed         | array  | commitments/\*<br/>blocks\*<br/>transactions/\*<br/>block-metadata/\*<br/>transaction-metadata/\*<br/>outputs/\* |
+| protectedTopics                      | The MQTT topics which only can be subscribed to with valid authorization. Wildcards using \* are allowed | array  |                                                                                                            |
+| [subscriptions](#mqtt_subscriptions) | Configuration for subscriptions                                                                         | object |                                                                                                            |
+| maximumClientWritesPending           | The maximum number of pending message writes for a client                                               | int    | 8192                                                                                                       |
+| clientWriteBufferSize                | The size of the client write buffer                                                                     | int    | 2048                                                                                                       |
+| clientReadBufferSize                 | The size of the client read buffer                                                                      | int    | 2048                                                                                                       |
 
 ### <a id="mqtt_websocket"></a> Websocket
 
@@ -194,6 +194,7 @@ Example:
         "blocks*",
         "transactions/*",
         "block-metadata/*",
+        "transaction-metadata/*",
         "outputs/*"
       ],
       "protectedTopics": [],
