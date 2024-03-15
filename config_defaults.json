@@ -46,6 +46,7 @@
       "blocks*",
       "transactions/*",
       "block-metadata/*",
+      "transaction-metadata/*",
       "outputs/*"
     ],
     "protectedTopics": [],
