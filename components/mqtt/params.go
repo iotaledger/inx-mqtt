@@ -45,6 +45,7 @@ var ParamsMQTT = &ParametersMQTT{
 		"blocks*",
 		"transactions/*",
 		"block-metadata/*",
+		"transaction-metadata/*",
 		"outputs/*",
 	},
 	ProtectedTopics: []string{},
