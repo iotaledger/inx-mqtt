@@ -36,7 +36,6 @@ var (
 )
 
 func provide(c *dig.Container) error {
-
 	type inDeps struct {
 		dig.In
 		NodeBridge nodebridge.NodeBridge

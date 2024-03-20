@@ -1,4 +1,4 @@
-//nolint:contextcheck,forcetypeassert,exhaustive
+//nolint:contextcheck,forcetypeassert,exhaustive,nonamedreturns
 package testsuite
 
 import (

@@ -80,7 +80,6 @@ func NewServer(log log.Logger,
 }
 
 func (s *Server) Start(ctx context.Context) error {
-
 	// register broker events
 	unhookBrokerEvents := lo.Batch(
 		s.MQTTBroker.Events().ClientConnected.Hook(func(event *subscriptionmanager.ClientEvent[string]) {
@@ -274,7 +273,6 @@ func (s *Server) onUnsubscribeTopic(clientID string, topic string) {
 	topic = strings.TrimSuffix(topic, "/raw")
 
 	switch topic {
-
 	case api.EventAPITopicCommitmentsLatest,
 		api.EventAPITopicCommitmentsFinalized:
 		// we don't need to unsubscribe here, because this is handled by the node bridge events anyway.
@@ -554,7 +552,6 @@ func (s *Server) fetchAndPublishTransactionMetadata(ctx context.Context, transac
 }
 
 func (s *Server) fetchAndPublishTransactionInclusionBlockMetadata(ctx context.Context, transactionID iotago.TransactionID) {
-
 	var blockID iotago.BlockID
 	blockIDFunc := func() (iotago.BlockID, error) {
 		if blockID.Empty() {
