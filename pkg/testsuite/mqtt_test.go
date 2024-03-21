@@ -1,4 +1,4 @@
-//nolint:forcetypeassert,scopelint,goconst,dupl
+//nolint:forcetypeassert,goconst,dupl
 package testsuite_test
 
 import (

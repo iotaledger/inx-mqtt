@@ -8,7 +8,6 @@ import (
 )
 
 func NewTLSConfig(tcpTLSCertificatePath string, tcpTLSPrivateKeyPath string) (*tls.Config, error) {
-
 	if _, err := os.Stat(tcpTLSCertificatePath); err != nil {
 		if os.IsNotExist(err) {
 			// file does not exist

@@ -31,7 +31,6 @@ func NewBrokerHook(subscriptionManager *subscriptionmanager.SubscriptionManager[
 	basicAuthManager *basicauth.BasicAuthManager,
 	publicTopics []string,
 	protectedTopics []string) (*BrokerHook, error) {
-
 	regexesPublicTopics, err := compileTopicsAsRegexes(publicTopics)
 	if err != nil {
 		return nil, ierrors.Wrap(err, "failed to compile public topics")
@@ -154,7 +153,6 @@ func (h *BrokerHook) OnUnsubscribed(cl *mqtt.Client, pk packets.Packet) {
 }
 
 func compileTopicAsRegex(topic string) *regexp.Regexp {
-
 	r := regexp.QuoteMeta(topic)
 	r = strings.ReplaceAll(r, `\*`, "(.*?)")
 	r += "$"

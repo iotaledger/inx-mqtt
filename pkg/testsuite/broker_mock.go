@@ -1,4 +1,3 @@
-//nolint:revive // skip linter for this package name
 package testsuite
 
 import (
@@ -110,8 +109,8 @@ func (m *MockedBroker) MockClear() {
 	for clientID := range clientIDs {
 		m.MockClientDisconnected(clientID)
 	}
-	require.Equal(m.t, m.subscriptionmanager.TopicsSize(), 0, "topics not empty")
-	require.Equal(m.t, m.subscriptionmanager.SubscribersSize(), 0, "subscribers not empty")
+	require.Equal(m.t, 0, m.subscriptionmanager.TopicsSize(), "topics not empty")
+	require.Equal(m.t, 0, m.subscriptionmanager.SubscribersSize(), "subscribers not empty")
 
 	m.mockedSubscribedTopicsAndClients = make(map[string]map[string]func(topic string, payload []byte))
 }
